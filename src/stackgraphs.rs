@@ -8,7 +8,9 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+use anyhow::anyhow;
 use anyhow::bail;
+use anyhow::Result;
 use stack_graphs::arena::Handle;
 use stack_graphs::graph::Node;
 use stack_graphs::graph::StackGraph;
@@ -18,6 +20,9 @@ use stack_graphs::stitching::Database;
 use stack_graphs::stitching::DatabaseCandidates;
 use stack_graphs::stitching::ForwardPartialPathStitcher;
 use stack_graphs::stitching::StitcherConfig;
+use tree_sitter::Node as TsNode;
+use tree_sitter::Parser;
+use tree_sitter::Tree;
 use tree_sitter_graph::Variables;
 use tree_sitter_stack_graphs::NoCancellation;
 use tree_sitter_stack_graphs::StackGraphLanguage;
@@ -34,19 +39,36 @@ use crate::languages::Lang;
 use crate::resolution::Resolver;
 use crate::resolution::ResolverFactory;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, strum::EnumString, strum::VariantNames)]
+#[strum(serialize_all = "kebab-case")]
+pub enum StackGraphsPythonMode {
+    /// Old behavior: all StackGraphs edges are emitted as Use.
+    UseOnly,
+    /// Python-only behavior: classify StackGraphs references using AST context into Import/Extend/Call/Create, otherwise Use.
+    Ast,
+}
+
 /// A Stack Graphs resolver.
 ///
 /// See [Resolver].
 pub struct StackGraphsResolver {
     commit_id: PseudoCommitId,
+    lang: Lang,
+    py_mode: StackGraphsPythonMode,
     sgl: Arc<StackGraphLanguage>,
     cache: Arc<SgCache>,
     files: RwLock<HashSet<FileKey>>,
 }
 
 impl StackGraphsResolver {
-    fn new(commit_id: PseudoCommitId, sgl: Arc<StackGraphLanguage>, cache: Arc<SgCache>) -> Self {
-        Self { commit_id, sgl, cache, files: Default::default() }
+    fn new(
+        commit_id: PseudoCommitId,
+        lang: Lang,
+        py_mode: StackGraphsPythonMode,
+        sgl: Arc<StackGraphLanguage>,
+        cache: Arc<SgCache>,
+    ) -> Self {
+        Self { commit_id, lang, py_mode, sgl, cache, files: Default::default() }
     }
 }
 
@@ -64,7 +86,7 @@ impl Resolver for StackGraphsResolver {
     fn resolve(&self) -> Vec<FileDep> {
         let files = self.files.read().unwrap();
         let data = files.iter().filter_map(|f| self.cache.get(f).unwrap());
-        resolve(data, self.commit_id)
+        resolve(data, self.commit_id, self.lang, self.py_mode)
     }
 }
 
@@ -72,6 +94,7 @@ impl Debug for StackGraphsResolver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("StackGraphsResolver")
             .field("commit_id", &self.commit_id)
+            .field("py_mode", &self.py_mode)
             .field("tsg_path", &self.sgl.tsg_path())
             .field("cache", &self.cache)
             .field("files", &self.files)
@@ -85,19 +108,25 @@ impl Debug for StackGraphsResolver {
 #[derive(Debug)]
 pub struct StackGraphsResolverFactory {
     cache: Arc<SgCache>,
+    py_mode: StackGraphsPythonMode,
 }
 
 impl StackGraphsResolverFactory {
-    pub fn new() -> Self {
-        Self { cache: Arc::new(SgCache::new()) }
+    pub fn new(py_mode: StackGraphsPythonMode) -> Self {
+        Self { cache: Arc::new(SgCache::new()), py_mode }
     }
 }
 
 impl ResolverFactory for StackGraphsResolverFactory {
     fn try_create(&self, commit_id: PseudoCommitId, lang: Lang) -> Option<Box<dyn Resolver>> {
         lang.sgl().map(|sgl| {
-            Box::new(StackGraphsResolver::new(commit_id, sgl, self.cache.clone()))
-                as Box<dyn Resolver>
+            Box::new(StackGraphsResolver::new(
+                commit_id,
+                lang,
+                self.py_mode,
+                sgl,
+                self.cache.clone(),
+            )) as Box<dyn Resolver>
         })
     }
 }
@@ -133,6 +162,7 @@ impl SgCache {
 #[derive(Debug, Clone)]
 struct StackGraphData {
     file_key: FileKey,
+    content: String,
     graph: stack_graphs::serde::StackGraph,
     paths: Vec<stack_graphs::serde::PartialPath>,
 }
@@ -140,6 +170,7 @@ struct StackGraphData {
 impl StackGraphData {
     fn new(
         file_key: FileKey,
+        content: String,
         graph: StackGraph,
         mut partials: PartialPaths,
         paths: Vec<PartialPath>,
@@ -149,7 +180,7 @@ impl StackGraphData {
             .map(|p| stack_graphs::serde::PartialPath::from_partial_path(&graph, &mut partials, p))
             .collect::<Vec<_>>();
         let graph = stack_graphs::serde::StackGraph::from_graph(&graph);
-        Self { file_key, graph, paths }
+        Self { file_key, content, graph, paths }
     }
 }
 
@@ -158,6 +189,7 @@ impl StackGraphData {
 /// Intended to contain the stack graphs of many files.
 struct StackGraphEval {
     file_keys: HashMap<String, FileKey>,
+    contents: HashMap<String, String>,
     graph: StackGraph,
     partials: PartialPaths,
     paths: Vec<PartialPath>,
@@ -169,6 +201,7 @@ impl StackGraphEval {
         I: IntoIterator<Item = StackGraphData>,
     {
         let mut file_keys = HashMap::new();
+        let mut contents = HashMap::new();
         let mut graph = StackGraph::new();
         let mut partials = PartialPaths::new();
         let mut paths = Vec::new();
@@ -179,6 +212,7 @@ impl StackGraphEval {
             }
 
             file_keys.insert(portable.file_key.filename.clone(), portable.file_key.clone());
+            contents.insert(portable.file_key.filename.clone(), portable.content.clone());
             portable.graph.load_into(&mut graph)?;
 
             for path in &portable.paths {
@@ -186,7 +220,7 @@ impl StackGraphEval {
             }
         }
 
-        Ok(StackGraphEval { file_keys, graph, partials, paths })
+        Ok(StackGraphEval { file_keys, contents, graph, partials, paths })
     }
 }
 
@@ -216,16 +250,154 @@ fn build(sgl: &StackGraphLanguage, filename: &str, content: &str) -> Option<Stac
     )
     .ok()?;
 
-    Some(StackGraphData::new(file_key, graph, partials, paths))
+    Some(StackGraphData::new(file_key, content.to_string(), graph, partials, paths))
+}
+
+fn ts_parse_cached<'a>(
+    cache: &'a mut HashMap<String, Tree>,
+    lang: Lang,
+    filename: &str,
+    content: &str,
+) -> Result<&'a Tree> {
+    if cache.contains_key(filename) {
+        return Ok(cache.get(filename).unwrap());
+    }
+    let mut parser = Parser::new();
+    parser.set_language(lang.ts_language())?;
+    let tree = parser.parse(content, None).ok_or_else(|| anyhow!("failed to parse"))?;
+    cache.insert(filename.to_string(), tree);
+    Ok(cache.get(filename).unwrap())
+}
+
+fn ts_node_at_byte(root: TsNode, byte: usize) -> TsNode {
+    root.descendant_for_byte_range(byte, byte.saturating_add(1)).unwrap_or(root)
+}
+
+fn python_in_import_context(node: TsNode) -> bool {
+    let mut cur = Some(node);
+    while let Some(n) = cur {
+        match n.kind() {
+            "import_statement" | "import_from_statement" => return true,
+            _ => cur = n.parent(),
+        }
+    }
+    false
+}
+
+fn python_in_class_bases(node: TsNode) -> bool {
+    // Tree-sitter-python models base classes as an `argument_list` under `class_definition`:
+    // class A(B, C):
+    //         ^^^ argument_list
+    let mut cur = Some(node);
+    while let Some(n) = cur {
+        if n.kind() == "argument_list" {
+            if let Some(p) = n.parent() {
+                if p.kind() == "class_definition" {
+                    return true;
+                }
+            }
+        }
+        cur = n.parent();
+    }
+    false
+}
+
+fn python_call_context(node: TsNode) -> Option<TsNode> {
+    let mut cur = Some(node);
+    while let Some(n) = cur {
+        if n.kind() == "call" {
+            return Some(n);
+        }
+        cur = n.parent();
+    }
+    None
+}
+
+fn python_is_in_call_function(call: TsNode, byte: usize) -> bool {
+    if let Some(fun) = call.child_by_field_name("function") {
+        byte >= fun.start_byte() && byte < fun.end_byte()
+    } else {
+        false
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PyDefKind {
+    Class,
+    Function,
+    Other,
+}
+
+fn python_def_kind_at(node: TsNode) -> PyDefKind {
+    let mut cur = Some(node);
+    while let Some(n) = cur {
+        match n.kind() {
+            "class_definition" => return PyDefKind::Class,
+            "function_definition" => return PyDefKind::Function,
+            _ => cur = n.parent(),
+        }
+    }
+    PyDefKind::Other
+}
+
+fn classify_stackgraph_dep(
+    lang: Lang,
+    src_filename: &str,
+    src_content: &str,
+    src_byte: usize,
+    tgt_filename: &str,
+    tgt_content: &str,
+    tgt_byte: usize,
+    parse_cache: &mut HashMap<String, Tree>,
+) -> DepKind {
+    if lang != Lang::Python {
+        return DepKind::Use;
+    }
+
+    let src_tree = match ts_parse_cached(parse_cache, lang, src_filename, src_content) {
+        Ok(t) => t.clone(),
+        Err(_) => return DepKind::Use,
+    };
+    let tgt_tree = match ts_parse_cached(parse_cache, lang, tgt_filename, tgt_content) {
+        Ok(t) => t.clone(),
+        Err(_) => return DepKind::Use,
+    };
+
+    let src_root = src_tree.root_node();
+    let tgt_root = tgt_tree.root_node();
+    let src_node = ts_node_at_byte(src_root, src_byte);
+    let tgt_node = ts_node_at_byte(tgt_root, tgt_byte);
+
+    if python_in_import_context(src_node) {
+        return DepKind::Import;
+    }
+
+    if python_in_class_bases(src_node) {
+        return DepKind::Extend;
+    }
+
+    if let Some(call) = python_call_context(src_node) {
+        if python_is_in_call_function(call, src_byte) {
+            // If the call target resolves to a class definition, treat it as Create (constructor call).
+            // Otherwise treat it as Call.
+            return match python_def_kind_at(tgt_node) {
+                PyDefKind::Class => DepKind::Create,
+                _ => DepKind::Call,
+            };
+        }
+    }
+
+    DepKind::Use
 }
 
 /// Resolve file-level dependencies given for a collection of files.
-fn resolve<I>(data: I, commit_id: PseudoCommitId) -> Vec<FileDep>
+fn resolve<I>(data: I, commit_id: PseudoCommitId, lang: Lang, py_mode: StackGraphsPythonMode) -> Vec<FileDep>
 where
     I: IntoIterator<Item = StackGraphData>,
 {
     let mut references = Vec::new();
     let mut eval = StackGraphEval::from_data(data).unwrap();
+    let mut parse_cache: HashMap<String, Tree> = HashMap::new();
 
     let mut db = Database::new();
 
@@ -253,10 +425,33 @@ where
         .into_iter()
         .map(|r| {
             let start_node_pos = position(r.start_node);
+            let end_node_pos = position(r.end_node);
+
+            let src_filename = filename(r.start_node);
+            let tgt_filename = filename(r.end_node);
+            let src_content = eval.contents.get(&src_filename).map(|s| s.as_str()).unwrap_or("");
+            let tgt_content = eval.contents.get(&tgt_filename).map(|s| s.as_str()).unwrap_or("");
+            let src_byte = start_node_pos.byte().unwrap_or(0);
+            let tgt_byte = end_node_pos.byte().unwrap_or(0);
+
+            let kind = match py_mode {
+                StackGraphsPythonMode::UseOnly => DepKind::Use,
+                StackGraphsPythonMode::Ast => classify_stackgraph_dep(
+                    lang,
+                    src_filename.as_str(),
+                    src_content,
+                    src_byte,
+                    tgt_filename.as_str(),
+                    tgt_content,
+                    tgt_byte,
+                    &mut parse_cache,
+                ),
+            };
+
             Dep::new(
                 FileEndpoint::new(file_key(r.start_node), start_node_pos),
-                FileEndpoint::new(file_key(r.end_node), position(r.end_node)),
-                DepKind::Use,
+                FileEndpoint::new(file_key(r.end_node), end_node_pos),
+                kind,
                 start_node_pos,
                 commit_id,
             )

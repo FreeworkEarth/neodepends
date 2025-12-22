@@ -1,0 +1,128 @@
+{
+  "ground_truth_count": 248,
+  "neodepends_count": 272,
+  "dropped_count": 0,
+  "missing": [],
+  "extra": [
+    [
+      "main.py/FUNCTIONS/main (Function)",
+      "tts/ticket_booking_system.py/CLASSES/TicketBookingSystem (Class)",
+      "Use"
+    ],
+    [
+      "tts/passenger.py/CLASSES/Passenger/CONSTRUCTORS/__init__ (Constructor)",
+      "tts/person.py/CLASSES/Person (Class)",
+      "Use"
+    ],
+    [
+      "tts/route.py/CLASSES/Route/FIELDS/base_fare (Field)",
+      "tts/route.py/CLASSES/Route/METHODS/_calculate_fare (Method)",
+      "Use"
+    ],
+    [
+      "tts/staff.py/CLASSES/Staff/CONSTRUCTORS/__init__ (Constructor)",
+      "tts/person.py/CLASSES/Person (Class)",
+      "Use"
+    ],
+    [
+      "tts/station_manager.py/CLASSES/StationManager/CONSTRUCTORS/__init__ (Constructor)",
+      "tts/staff.py/CLASSES/Staff (Class)",
+      "Use"
+    ],
+    [
+      "tts/station_manager.py/module (Module)",
+      "tts/person.py/module (Module)",
+      "Use"
+    ],
+    [
+      "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+      "tts/ticket.py/CLASSES/Ticket (Class)",
+      "Use"
+    ],
+    [
+      "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+      "tts/ticket.py/CLASSES/Ticket/FIELDS/ticket_counter (Field)",
+      "Use"
+    ],
+    [
+      "tts/ticket_agent.py/CLASSES/TicketAgent/CONSTRUCTORS/__init__ (Constructor)",
+      "tts/staff.py/CLASSES/Staff (Class)",
+      "Use"
+    ],
+    [
+      "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/cancel_ticket (Method)",
+      "tts/passenger.py/CLASSES/Passenger/METHODS/cancel_ticket (Method)",
+      "Use"
+    ],
+    [
+      "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/cancel_ticket (Method)",
+      "tts/ticket.py/CLASSES/Ticket (Class)",
+      "Use"
+    ],
+    [
+      "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/cancel_ticket (Method)",
+      "tts/ticket.py/CLASSES/Ticket/METHODS/cancel (Method)",
+      "Use"
+    ],
+    [
+      "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/issue_ticket (Method)",
+      "tts/passenger.py/CLASSES/Passenger (Class)",
+      "Use"
+    ],
+    [
+      "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/issue_ticket (Method)",
+      "tts/passenger.py/CLASSES/Passenger/METHODS/book_ticket (Method)",
+      "Use"
+    ],
+    [
+      "tts/ticket_agent.py/module (Module)",
+      "tts/passenger.py/module (Module)",
+      "Use"
+    ],
+    [
+      "tts/ticket_agent.py/module (Module)",
+      "tts/person.py/module (Module)",
+      "Use"
+    ],
+    [
+      "tts/ticket_booking_system.py/CLASSES/AdvancedReportingSystem/METHODS/generate_executive_summary (Method)",
+      "tts/ticket_booking_system.py/CLASSES/ReportingSystem/METHODS/generate_summary (Method)",
+      "Use"
+    ],
+    [
+      "tts/ticket_booking_system.py/CLASSES/ReportingSystem/CONSTRUCTORS/__init__ (Constructor)",
+      "tts/ticket_booking_system.py/CLASSES/TicketBookingSystem (Class)",
+      "Use"
+    ],
+    [
+      "tts/ticket_booking_system.py/CLASSES/TicketBookingSystem/METHODS/analyze_revenue (Method)",
+      "tts/base_management_system.py/CLASSES/BaseManagementSystem/METHODS/log_action (Method)",
+      "Use"
+    ],
+    [
+      "tts/train_station.py/CLASSES/TrainStation/METHODS/__eq__ (Method)",
+      "tts/train_station.py/CLASSES/TrainStation (Class)",
+      "Use"
+    ],
+    [
+      "tts/train_station.py/CLASSES/TrainStation/METHODS/add_agent (Method)",
+      "tts/ticket_agent.py/CLASSES/TicketAgent (Class)",
+      "Use"
+    ],
+    [
+      "tts/train_station.py/CLASSES/TrainStation/METHODS/add_agent (Method)",
+      "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/set_assigned_station (Method)",
+      "Use"
+    ],
+    [
+      "tts/train_station.py/CLASSES/TrainStation/METHODS/add_agent (Method)",
+      "tts/train_station.py/CLASSES/TrainStation (Class)",
+      "Use"
+    ],
+    [
+      "tts/train_station.py/module (Module)",
+      "tts/ticket_agent.py/module (Module)",
+      "Use"
+    ]
+  ]
+}

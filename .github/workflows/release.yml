@@ -1,0 +1,83 @@
+name: release-binaries
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runs_on: macos-14
+            target: aarch64-apple-darwin
+            bin_name: neodepends
+            archive_ext: tar.gz
+          - runs_on: macos-13
+            target: x86_64-apple-darwin
+            bin_name: neodepends
+            archive_ext: tar.gz
+          - runs_on: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin_name: neodepends.exe
+            archive_ext: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Prepare dist (unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/neodepends
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin_name }}" "dist/neodepends/${{ matrix.bin_name }}"
+          cp README.md dist/neodepends/README.md
+          cp RESOLVERS_AND_DEP_KINDS.md dist/neodepends/RESOLVERS_AND_DEP_KINDS.md || true
+          cp -R tools dist/neodepends/tools
+          cp -R languages dist/neodepends/languages
+          cp -R examples dist/neodepends/examples || true
+          tar -C dist -czf "neodepends-${{ github.ref_name }}-${{ matrix.target }}.tar.gz" neodepends
+
+      - name: Prepare dist (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/neodepends | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.bin_name }}" "dist/neodepends/${{ matrix.bin_name }}"
+          Copy-Item "README.md" "dist/neodepends/README.md"
+          if (Test-Path "RESOLVERS_AND_DEP_KINDS.md") { Copy-Item "RESOLVERS_AND_DEP_KINDS.md" "dist/neodepends/RESOLVERS_AND_DEP_KINDS.md" }
+          Copy-Item "tools" "dist/neodepends/tools" -Recurse
+          Copy-Item "languages" "dist/neodepends/languages" -Recurse
+          if (Test-Path "examples") { Copy-Item "examples" "dist/neodepends/examples" -Recurse }
+          Compress-Archive -Path dist/neodepends -DestinationPath "neodepends-${{ github.ref_name }}-${{ matrix.target }}.zip" -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neodepends-${{ github.ref_name }}-${{ matrix.target }}
+          path: |
+            neodepends-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive_ext }}
+
+      - name: Publish GitHub Release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            neodepends-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive_ext }}

@@ -1,0 +1,1147 @@
+[
+  [
+    "main.py/module (Module)",
+    "tts/booking_service.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/passenger.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/passenger_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/reporting_service.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/route.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/route_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/station_manager.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/ticket_agent.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/ticket_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/train.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/train_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/train_station.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/train_station_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/booking_service.py/CLASSES/BookingService (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/passenger.py/CLASSES/Passenger (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/passenger_repository.py/CLASSES/PassengerRepository (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/reporting_service.py/CLASSES/AdvancedReportingService (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/route.py/CLASSES/Route (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/route_repository.py/CLASSES/RouteRepository (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/station_manager.py/CLASSES/StationManager (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/ticket_agent.py/CLASSES/TicketAgent (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/ticket_repository.py/CLASSES/TicketRepository (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/train.py/CLASSES/Train (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/train_repository.py/CLASSES/TrainRepository (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/train_station.py/CLASSES/TrainStation (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository (Class)",
+    "Create"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/book_ticket (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/cancel_ticket (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/get_passenger_tickets (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/search_trains (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/METHODS/add_passenger (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/METHODS/get_all_passengers (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/reporting_service.py/CLASSES/AdvancedReportingService/METHODS/generate_executive_summary (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/route_repository.py/CLASSES/RouteRepository/METHODS/add_route (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/route_repository.py/CLASSES/RouteRepository/METHODS/get_all_routes (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/station_manager.py/CLASSES/StationManager/METHODS/display_info (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/display_info (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/train_repository.py/CLASSES/TrainRepository/METHODS/add_train (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/train_repository.py/CLASSES/TrainRepository/METHODS/get_all_trains (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/METHODS/add_station (Method)",
+    "Call"
+  ],
+  [
+    "main.py/FUNCTIONS/main (Function)",
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/METHODS/get_all_stations (Method)",
+    "Call"
+  ],
+  [
+    "tts/booking_service.py/module (Module)",
+    "tts/passenger_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/booking_service.py/module (Module)",
+    "tts/route_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/booking_service.py/module (Module)",
+    "tts/ticket.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/booking_service.py/module (Module)",
+    "tts/ticket_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/booking_service.py/module (Module)",
+    "tts/train_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/booking_service.py/module (Module)",
+    "tts/train_station_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/passenger_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/route_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/station_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/ticket_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/train_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/book_ticket (Method)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/passenger_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/book_ticket (Method)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/route_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/book_ticket (Method)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/ticket_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/book_ticket (Method)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/train_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/cancel_ticket (Method)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/ticket_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/cancel_ticket (Method)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/train_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/get_passenger_tickets (Method)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/ticket_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/search_trains (Method)",
+    "tts/booking_service.py/CLASSES/BookingService/FIELDS/train_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/book_ticket (Method)",
+    "tts/ticket.py/CLASSES/Ticket (Class)",
+    "Create"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/book_ticket (Method)",
+    "tts/passenger.py/CLASSES/Passenger/METHODS/add_ticket (Method)",
+    "Call"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/book_ticket (Method)",
+    "tts/train.py/CLASSES/Train/METHODS/book_seat (Method)",
+    "Call"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/cancel_ticket (Method)",
+    "tts/ticket.py/CLASSES/Ticket/METHODS/cancel (Method)",
+    "Call"
+  ],
+  [
+    "tts/booking_service.py/CLASSES/BookingService/METHODS/cancel_ticket (Method)",
+    "tts/train.py/CLASSES/Train/METHODS/cancel_seat (Method)",
+    "Call"
+  ],
+  [
+    "tts/passenger.py/module (Module)",
+    "tts/person.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/passenger.py/CLASSES/Passenger (Class)",
+    "tts/person.py/CLASSES/Person (Class)",
+    "Extend"
+  ],
+  [
+    "tts/passenger.py/CLASSES/Passenger/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/person.py/CLASSES/Person/CONSTRUCTORS/__init__ (Constructor)",
+    "Call"
+  ],
+  [
+    "tts/passenger.py/CLASSES/Passenger/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/passenger.py/CLASSES/Passenger/FIELDS/ticket_ids (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger.py/CLASSES/Passenger/METHODS/add_ticket (Method)",
+    "tts/passenger.py/CLASSES/Passenger/FIELDS/ticket_ids (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger.py/CLASSES/Passenger/METHODS/display_info (Method)",
+    "tts/passenger.py/CLASSES/Passenger/FIELDS/ticket_ids (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger.py/CLASSES/Passenger/METHODS/display_info (Method)",
+    "tts/person.py/CLASSES/Person/FIELDS/email (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger.py/CLASSES/Passenger/METHODS/display_info (Method)",
+    "tts/person.py/CLASSES/Person/FIELDS/id (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger.py/CLASSES/Passenger/METHODS/display_info (Method)",
+    "tts/person.py/CLASSES/Person/FIELDS/name (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger.py/CLASSES/Passenger/METHODS/display_info (Method)",
+    "tts/person.py/CLASSES/Person/FIELDS/phone (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger_repository.py/module (Module)",
+    "tts/passenger.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/FIELDS/passengers (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/METHODS/add_passenger (Method)",
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/FIELDS/passengers (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/METHODS/get_all_passengers (Method)",
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/FIELDS/passengers (Field)",
+    "Use"
+  ],
+  [
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/METHODS/get_passenger (Method)",
+    "tts/passenger_repository.py/CLASSES/PassengerRepository/FIELDS/passengers (Field)",
+    "Use"
+  ],
+  [
+    "tts/person.py/CLASSES/Person/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/person.py/CLASSES/Person/FIELDS/email (Field)",
+    "Use"
+  ],
+  [
+    "tts/person.py/CLASSES/Person/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/person.py/CLASSES/Person/FIELDS/id (Field)",
+    "Use"
+  ],
+  [
+    "tts/person.py/CLASSES/Person/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/person.py/CLASSES/Person/FIELDS/name (Field)",
+    "Use"
+  ],
+  [
+    "tts/person.py/CLASSES/Person/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/person.py/CLASSES/Person/FIELDS/phone (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/module (Module)",
+    "tts/passenger_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/reporting_service.py/module (Module)",
+    "tts/route_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/reporting_service.py/module (Module)",
+    "tts/ticket_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/reporting_service.py/module (Module)",
+    "tts/train_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/reporting_service.py/module (Module)",
+    "tts/train_station_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/AdvancedReportingService (Class)",
+    "tts/reporting_service.py/CLASSES/ReportingService (Class)",
+    "Extend"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/cached_stats (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/metrics (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/passenger_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/reports (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/route_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/station_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/ticket_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/train_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/calculate_occupancy_rate (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/metrics (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/calculate_occupancy_rate (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/train_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/calculate_revenue (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/metrics (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/calculate_revenue (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/ticket_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/clear_cache (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/cached_stats (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/clear_cache (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/metrics (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/export_all_reports (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/metrics (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/export_all_reports (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/reports (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_passenger_report (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/passenger_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_passenger_report (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/reports (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_station_report (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/reports (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_station_report (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/route_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_station_report (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/station_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_station_report (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/train_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/metrics (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/passenger_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/reports (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/route_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/station_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/ticket_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/train_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_train_report (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/reports (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_train_report (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/train_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/get_popular_routes (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/ticket_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/get_station_traffic (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/cached_stats (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/get_station_traffic (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/FIELDS/route_repo (Field)",
+    "Use"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/AdvancedReportingService/METHODS/generate_executive_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "Call"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/export_all_reports (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "Call"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/calculate_occupancy_rate (Method)",
+    "Call"
+  ],
+  [
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/generate_summary (Method)",
+    "tts/reporting_service.py/CLASSES/ReportingService/METHODS/calculate_revenue (Method)",
+    "Call"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/route.py/CLASSES/Route/FIELDS/base_fare (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/route.py/CLASSES/Route/FIELDS/destination_station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/route.py/CLASSES/Route/FIELDS/distance (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/route.py/CLASSES/Route/FIELDS/intermediate_stop_ids (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/route.py/CLASSES/Route/FIELDS/origin_station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/route.py/CLASSES/Route/FIELDS/route_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/METHODS/add_intermediate_stop (Method)",
+    "tts/route.py/CLASSES/Route/FIELDS/intermediate_stop_ids (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/METHODS/display_info (Method)",
+    "tts/route.py/CLASSES/Route/FIELDS/base_fare (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/METHODS/display_info (Method)",
+    "tts/route.py/CLASSES/Route/FIELDS/destination_station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/METHODS/display_info (Method)",
+    "tts/route.py/CLASSES/Route/FIELDS/distance (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/METHODS/display_info (Method)",
+    "tts/route.py/CLASSES/Route/FIELDS/intermediate_stop_ids (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/METHODS/display_info (Method)",
+    "tts/route.py/CLASSES/Route/FIELDS/origin_station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/route.py/CLASSES/Route/METHODS/display_info (Method)",
+    "tts/route.py/CLASSES/Route/FIELDS/route_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/route_repository.py/module (Module)",
+    "tts/route.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/route_repository.py/CLASSES/RouteRepository/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/route_repository.py/CLASSES/RouteRepository/FIELDS/routes (Field)",
+    "Use"
+  ],
+  [
+    "tts/route_repository.py/CLASSES/RouteRepository/METHODS/add_route (Method)",
+    "tts/route_repository.py/CLASSES/RouteRepository/FIELDS/routes (Field)",
+    "Use"
+  ],
+  [
+    "tts/route_repository.py/CLASSES/RouteRepository/METHODS/get_all_routes (Method)",
+    "tts/route_repository.py/CLASSES/RouteRepository/FIELDS/routes (Field)",
+    "Use"
+  ],
+  [
+    "tts/route_repository.py/CLASSES/RouteRepository/METHODS/get_route (Method)",
+    "tts/route_repository.py/CLASSES/RouteRepository/FIELDS/routes (Field)",
+    "Use"
+  ],
+  [
+    "tts/route_repository.py/CLASSES/RouteRepository/METHODS/get_routes_by_station (Method)",
+    "tts/route_repository.py/CLASSES/RouteRepository/FIELDS/routes (Field)",
+    "Use"
+  ],
+  [
+    "tts/staff.py/module (Module)",
+    "tts/person.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/staff.py/CLASSES/Staff (Class)",
+    "tts/person.py/CLASSES/Person (Class)",
+    "Extend"
+  ],
+  [
+    "tts/staff.py/CLASSES/Staff/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/person.py/CLASSES/Person/CONSTRUCTORS/__init__ (Constructor)",
+    "Call"
+  ],
+  [
+    "tts/staff.py/CLASSES/Staff/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/staff.py/CLASSES/Staff/FIELDS/employee_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/staff.py/CLASSES/Staff/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/staff.py/CLASSES/Staff/FIELDS/salary (Field)",
+    "Use"
+  ],
+  [
+    "tts/station_manager.py/module (Module)",
+    "tts/staff.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/station_manager.py/CLASSES/StationManager (Class)",
+    "tts/staff.py/CLASSES/Staff (Class)",
+    "Extend"
+  ],
+  [
+    "tts/station_manager.py/CLASSES/StationManager/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/staff.py/CLASSES/Staff/CONSTRUCTORS/__init__ (Constructor)",
+    "Call"
+  ],
+  [
+    "tts/station_manager.py/CLASSES/StationManager/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/station_manager.py/CLASSES/StationManager/FIELDS/managed_station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/station_manager.py/CLASSES/StationManager/METHODS/display_info (Method)",
+    "tts/person.py/CLASSES/Person/FIELDS/name (Field)",
+    "Use"
+  ],
+  [
+    "tts/station_manager.py/CLASSES/StationManager/METHODS/display_info (Method)",
+    "tts/staff.py/CLASSES/Staff/FIELDS/employee_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/station_manager.py/CLASSES/StationManager/METHODS/display_info (Method)",
+    "tts/staff.py/CLASSES/Staff/FIELDS/salary (Field)",
+    "Use"
+  ],
+  [
+    "tts/station_manager.py/CLASSES/StationManager/METHODS/display_info (Method)",
+    "tts/station_manager.py/CLASSES/StationManager/FIELDS/managed_station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/booking_date (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/fare (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/passenger_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/route_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/seat_number (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/status (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/ticket_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/train_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/travel_date (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/METHODS/cancel (Method)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/status (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/METHODS/display_info (Method)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/fare (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/METHODS/display_info (Method)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/passenger_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/METHODS/display_info (Method)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/route_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/METHODS/display_info (Method)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/seat_number (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/METHODS/display_info (Method)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/status (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/METHODS/display_info (Method)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/ticket_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/METHODS/display_info (Method)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/train_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket.py/CLASSES/Ticket/METHODS/display_info (Method)",
+    "tts/ticket.py/CLASSES/Ticket/FIELDS/travel_date (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_agent.py/module (Module)",
+    "tts/staff.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/ticket_agent.py/CLASSES/TicketAgent (Class)",
+    "tts/staff.py/CLASSES/Staff (Class)",
+    "Extend"
+  ],
+  [
+    "tts/ticket_agent.py/CLASSES/TicketAgent/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/staff.py/CLASSES/Staff/CONSTRUCTORS/__init__ (Constructor)",
+    "Call"
+  ],
+  [
+    "tts/ticket_agent.py/CLASSES/TicketAgent/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket_agent.py/CLASSES/TicketAgent/FIELDS/assigned_station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/display_info (Method)",
+    "tts/person.py/CLASSES/Person/FIELDS/name (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/display_info (Method)",
+    "tts/staff.py/CLASSES/Staff/FIELDS/employee_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/display_info (Method)",
+    "tts/staff.py/CLASSES/Staff/FIELDS/salary (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_agent.py/CLASSES/TicketAgent/METHODS/display_info (Method)",
+    "tts/ticket_agent.py/CLASSES/TicketAgent/FIELDS/assigned_station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_repository.py/module (Module)",
+    "tts/ticket.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/ticket_repository.py/CLASSES/TicketRepository/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/ticket_repository.py/CLASSES/TicketRepository/FIELDS/tickets (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_repository.py/CLASSES/TicketRepository/METHODS/add_ticket (Method)",
+    "tts/ticket_repository.py/CLASSES/TicketRepository/FIELDS/tickets (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_repository.py/CLASSES/TicketRepository/METHODS/get_all_tickets (Method)",
+    "tts/ticket_repository.py/CLASSES/TicketRepository/FIELDS/tickets (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_repository.py/CLASSES/TicketRepository/METHODS/get_ticket (Method)",
+    "tts/ticket_repository.py/CLASSES/TicketRepository/FIELDS/tickets (Field)",
+    "Use"
+  ],
+  [
+    "tts/ticket_repository.py/CLASSES/TicketRepository/METHODS/get_tickets_by_passenger (Method)",
+    "tts/ticket_repository.py/CLASSES/TicketRepository/FIELDS/tickets (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train.py/CLASSES/Train/FIELDS/arrival_time (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train.py/CLASSES/Train/FIELDS/available_seats (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train.py/CLASSES/Train/FIELDS/departure_time (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train.py/CLASSES/Train/FIELDS/route_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train.py/CLASSES/Train/FIELDS/total_seats (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train.py/CLASSES/Train/FIELDS/train_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train.py/CLASSES/Train/FIELDS/train_name (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/book_seat (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/available_seats (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/cancel_seat (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/available_seats (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/cancel_seat (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/total_seats (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/display_info (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/arrival_time (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/display_info (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/available_seats (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/display_info (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/departure_time (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/display_info (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/route_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/display_info (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/total_seats (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/display_info (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/train_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/train.py/CLASSES/Train/METHODS/display_info (Method)",
+    "tts/train.py/CLASSES/Train/FIELDS/train_name (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_repository.py/module (Module)",
+    "tts/train.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/train_repository.py/CLASSES/TrainRepository/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train_repository.py/CLASSES/TrainRepository/FIELDS/trains (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_repository.py/CLASSES/TrainRepository/METHODS/add_train (Method)",
+    "tts/train_repository.py/CLASSES/TrainRepository/FIELDS/trains (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_repository.py/CLASSES/TrainRepository/METHODS/get_all_trains (Method)",
+    "tts/train_repository.py/CLASSES/TrainRepository/FIELDS/trains (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_repository.py/CLASSES/TrainRepository/METHODS/get_train (Method)",
+    "tts/train_repository.py/CLASSES/TrainRepository/FIELDS/trains (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_repository.py/CLASSES/TrainRepository/METHODS/get_trains_by_route (Method)",
+    "tts/train_repository.py/CLASSES/TrainRepository/FIELDS/trains (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station.py/CLASSES/TrainStation/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train_station.py/CLASSES/TrainStation/FIELDS/city (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station.py/CLASSES/TrainStation/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train_station.py/CLASSES/TrainStation/FIELDS/state (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station.py/CLASSES/TrainStation/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train_station.py/CLASSES/TrainStation/FIELDS/station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station.py/CLASSES/TrainStation/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train_station.py/CLASSES/TrainStation/FIELDS/station_name (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station.py/CLASSES/TrainStation/METHODS/display_info (Method)",
+    "tts/train_station.py/CLASSES/TrainStation/FIELDS/city (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station.py/CLASSES/TrainStation/METHODS/display_info (Method)",
+    "tts/train_station.py/CLASSES/TrainStation/FIELDS/state (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station.py/CLASSES/TrainStation/METHODS/display_info (Method)",
+    "tts/train_station.py/CLASSES/TrainStation/FIELDS/station_id (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station.py/CLASSES/TrainStation/METHODS/display_info (Method)",
+    "tts/train_station.py/CLASSES/TrainStation/FIELDS/station_name (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station_repository.py/module (Module)",
+    "tts/train_station.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/CONSTRUCTORS/__init__ (Constructor)",
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/FIELDS/stations (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/METHODS/add_station (Method)",
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/FIELDS/stations (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/METHODS/find_by_name (Method)",
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/FIELDS/stations (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/METHODS/get_all_stations (Method)",
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/FIELDS/stations (Field)",
+    "Use"
+  ],
+  [
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/METHODS/get_station (Method)",
+    "tts/train_station_repository.py/CLASSES/TrainStationRepository/FIELDS/stations (Field)",
+    "Use"
+  ]
+]

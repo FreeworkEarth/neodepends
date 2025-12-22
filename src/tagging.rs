@@ -130,7 +130,13 @@ pub enum Tagger {
 impl Tagger {
     pub fn new(language: Option<Language>, tag_query: Option<&str>) -> Tagger {
         match (language, tag_query) {
-            (Some(language), Some(query)) => Self::EntityLevel(EntityTagger::new(language, query)),
+            (Some(language), Some(query)) => match EntityTagger::try_new(language, query) {
+                Ok(tagger) => Self::EntityLevel(tagger),
+                Err(err) => {
+                    log::warn!("Failed to compile tag query; falling back to file-level entities: {err}");
+                    Self::FileLevel
+                }
+            },
             _ => Self::FileLevel,
         }
     }
@@ -160,9 +166,11 @@ pub struct EntityTagger {
 }
 
 impl EntityTagger {
-    fn new(language: Language, tag_query: &str) -> Self {
-        let query = Query::new(language, tag_query).unwrap();
-        let ix_name = query.capture_index_for_name("name").unwrap();
+    fn try_new(language: Language, tag_query: &str) -> Result<Self> {
+        let query = Query::new(language, tag_query).context("failed to compile tree-sitter tag query")?;
+        let ix_name = query
+            .capture_index_for_name("name")
+            .context("tag query missing required capture '@name'")?;
         let ix_comment = query.capture_index_for_name("comment");
 
         let kinds = query
@@ -171,7 +179,7 @@ impl EntityTagger {
             .map(|c| c.strip_prefix("tag.").map(|k| EntityKind::try_from(k).unwrap()))
             .collect::<Vec<_>>();
 
-        Self { language, query, kinds, ix_name, ix_comment }
+        Ok(Self { language, query, kinds, ix_name, ix_comment })
     }
 
     fn tag(&self, filename: &str, content: &str) -> Result<EntitySet> {

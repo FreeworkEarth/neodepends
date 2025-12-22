@@ -53,6 +53,23 @@ impl Lang {
         self.config().sgl.clone()
     }
 
+    /// Get the Tree-sitter language for this language.
+    ///
+    /// Useful when we need to parse the source AST outside of the tagger.
+    pub fn ts_language(&self) -> Language {
+        match self {
+            Lang::C => tree_sitter_c::language(),
+            Lang::Cpp => tree_sitter_cpp::language(),
+            Lang::Go => tree_sitter_go::language(),
+            Lang::Java => tree_sitter_java::language(),
+            Lang::JavaScript => tree_sitter_javascript::language(),
+            Lang::Kotlin => tree_sitter_kotlin::language(),
+            Lang::Python => tree_sitter_python::language(),
+            Lang::Ruby => tree_sitter_ruby::language(),
+            Lang::TypeScript => tree_sitter_typescript::language_typescript(),
+        }
+    }
+
     /// Get the name of this language according to Depends.
     ///
     /// Intended to be passed to Depends as a command-line argument.
@@ -216,7 +233,7 @@ lazy_static! {
     static ref PYTHON: LangConfig = LangConfig::new(
         tree_sitter_python::language(),
         LANG_TABLE.pathspec(Lang::Python),
-        None,
+        Some(include_str!("../languages/python/tags.scm")),
         Some(include_str!("../languages/python/stack-graphs.tsg")),
         Some("python")
     );

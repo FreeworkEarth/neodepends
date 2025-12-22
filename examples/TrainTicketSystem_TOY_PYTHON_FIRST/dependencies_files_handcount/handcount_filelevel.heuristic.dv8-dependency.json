@@ -1,0 +1,223 @@
+{
+  "@schemaVersion": "1.0",
+  "name": "handcount (heuristic, file-level collapsed Use)",
+  "variables": [
+    "tts/base_management_system.py",
+    "tts/passenger.py",
+    "tts/person.py",
+    "tts/route.py",
+    "tts/staff.py",
+    "tts/station_manager.py",
+    "tts/ticket.py",
+    "tts/ticket_agent.py",
+    "tts/ticket_booking_system.py",
+    "tts/train.py",
+    "tts/train_station.py",
+    "main.py"
+  ],
+  "cells": [
+    {
+      "src": 1,
+      "dest": 1,
+      "values": {
+        "Use": 12.0
+      }
+    },
+    {
+      "src": 1,
+      "dest": 2,
+      "values": {
+        "Use": 6.0
+      }
+    },
+    {
+      "src": 2,
+      "dest": 2,
+      "values": {
+        "Use": 11.0
+      }
+    },
+    {
+      "src": 3,
+      "dest": 3,
+      "values": {
+        "Use": 21.0
+      }
+    },
+    {
+      "src": 4,
+      "dest": 2,
+      "values": {
+        "Use": 3.0
+      }
+    },
+    {
+      "src": 4,
+      "dest": 4,
+      "values": {
+        "Use": 6.0
+      }
+    },
+    {
+      "src": 5,
+      "dest": 2,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 5,
+      "dest": 4,
+      "values": {
+        "Use": 4.0
+      }
+    },
+    {
+      "src": 5,
+      "dest": 5,
+      "values": {
+        "Use": 7.0
+      }
+    },
+    {
+      "src": 5,
+      "dest": 9,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 6,
+      "dest": 6,
+      "values": {
+        "Use": 27.0
+      }
+    },
+    {
+      "src": 7,
+      "dest": 1,
+      "values": {
+        "Use": 2.0
+      }
+    },
+    {
+      "src": 7,
+      "dest": 2,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 7,
+      "dest": 4,
+      "values": {
+        "Use": 4.0
+      }
+    },
+    {
+      "src": 7,
+      "dest": 6,
+      "values": {
+        "Use": 3.0
+      }
+    },
+    {
+      "src": 7,
+      "dest": 7,
+      "values": {
+        "Use": 7.0
+      }
+    },
+    {
+      "src": 8,
+      "dest": 0,
+      "values": {
+        "Use": 3.0
+      }
+    },
+    {
+      "src": 8,
+      "dest": 8,
+      "values": {
+        "Use": 57.0
+      }
+    },
+    {
+      "src": 9,
+      "dest": 9,
+      "values": {
+        "Use": 24.0
+      }
+    },
+    {
+      "src": 10,
+      "dest": 7,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 10,
+      "dest": 10,
+      "values": {
+        "Use": 20.0
+      }
+    },
+    {
+      "src": 11,
+      "dest": 1,
+      "values": {
+        "Use": 3.0
+      }
+    },
+    {
+      "src": 11,
+      "dest": 3,
+      "values": {
+        "Use": 4.0
+      }
+    },
+    {
+      "src": 11,
+      "dest": 5,
+      "values": {
+        "Use": 5.0
+      }
+    },
+    {
+      "src": 11,
+      "dest": 6,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 11,
+      "dest": 7,
+      "values": {
+        "Use": 6.0
+      }
+    },
+    {
+      "src": 11,
+      "dest": 8,
+      "values": {
+        "Use": 9.0
+      }
+    },
+    {
+      "src": 11,
+      "dest": 9,
+      "values": {
+        "Use": 4.0
+      }
+    },
+    {
+      "src": 11,
+      "dest": 10,
+      "values": {
+        "Use": 4.0
+      }
+    }
+  ]
+}

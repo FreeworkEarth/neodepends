@@ -35,6 +35,7 @@ use crate::filesystem::FileSystem;
 use crate::resolution::ResolverFactory;
 use crate::spec::Filespec;
 use crate::stackgraphs::StackGraphsResolverFactory;
+use crate::stackgraphs::StackGraphsPythonMode;
 
 mod core;
 mod depends;
@@ -292,6 +293,13 @@ struct ResolverOpts {
     /// Stack Graphs if specified first on the command line.
     #[arg(short = 'D', long)]
     depends: bool,
+
+    /// StackGraphs output mode for Python.
+    ///
+    /// - ast: classify StackGraphs references using Python AST context into Import/Extend/Call/Create when possible (default)
+    /// - use-only: old behavior, emit only Use edges for StackGraphs
+    #[arg(long, default_value = "ast", value_parser = strum_parser!(StackGraphsPythonMode))]
+    stackgraphs_python_mode: StackGraphsPythonMode,
 }
 
 fn main() -> Result<()> {
@@ -313,7 +321,7 @@ fn main() -> Result<()> {
     };
 
     let mut extractor = Extractor::new(fs.clone(), file_level);
-    extractor.set_resolver(create_resolver(&matches, depends_config));
+    extractor.set_resolver(create_resolver(&matches, depends_config, opts.resolver_opts.stackgraphs_python_mode));
 
     let mut structure_commits = try_parse_revspecs(&fs, &opts.structure)?;
     let history_commits = try_parse_revspecs(&fs, &opts.revspecs)?;
@@ -474,9 +482,9 @@ fn try_read_file_revspecs(fs: &FileSystem, path: &str) -> Result<Vec<PseudoCommi
     Ok(ids)
 }
 
-fn create_resolver(matches: &ArgMatches, config: DependsConfig) -> ResolverManager {
+fn create_resolver(matches: &ArgMatches, config: DependsConfig, stackgraphs_python_mode: StackGraphsPythonMode) -> ResolverManager {
     let mut map: HashMap<&str, Box<dyn ResolverFactory>> = HashMap::new();
-    map.insert("stackgraphs", Box::new(StackGraphsResolverFactory::new()));
+    map.insert("stackgraphs", Box::new(StackGraphsResolverFactory::new(stackgraphs_python_mode)));
     map.insert("depends", Box::new(DependsResolverFactory::new(config)));
     ResolverManager::new(sort_by_flag_index(matches, map))
 }

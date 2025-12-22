@@ -90,13 +90,27 @@ impl Resolver for DependsResolver {
     fn resolve(&self) -> Vec<FileDep> {
         let file_set = FileSet::new(self.files.read().unwrap().iter().map(|x| x.clone()));
         log::info!("Running Depends on {} file(s)...", &self.depends_lang);
-        run(&self.config, &self.temp_dir, &self.depends_lang).unwrap();
+        if let Err(err) = run(&self.config, &self.temp_dir, &self.depends_lang) {
+            log::warn!(
+                "Depends failed for language '{}': {err}. Hint: pass --depends-jar /path/to/depends.jar or place depends.jar next to the neodepends binary.",
+                &self.depends_lang
+            );
+            return Vec::new();
+        }
         log::info!("Loading Depends {} output...", &self.depends_lang);
-        load_depends_output(&self.temp_dir, &self.depends_lang)
-            .unwrap()
-            .iter_filename_deps(self.commit_id)
-            .map(|d| d.into_file_dep(&file_set).unwrap())
-            .collect_vec()
+        match load_depends_output(&self.temp_dir, &self.depends_lang) {
+            Ok(output) => output
+                .iter_filename_deps(self.commit_id)
+                .filter_map(|d| d.into_file_dep(&file_set))
+                .collect_vec(),
+            Err(err) => {
+                log::warn!(
+                    "Failed to load Depends output for language '{}': {err}.",
+                    &self.depends_lang
+                );
+                Vec::new()
+            }
+        }
     }
 }
 
@@ -164,10 +178,30 @@ fn get_depends_jar(jar: Option<PathBuf>) -> Result<PathBuf> {
 }
 
 fn find_depends_jar() -> Option<PathBuf> {
-    std::env::current_exe()
+    let exe_dir = std::env::current_exe()
         .ok()
-        .and_then(|e| e.parent().map(|p| p.to_path_buf()))
-        .map(|p| p.join("depends.jar"))
+        .and_then(|e| e.parent().map(|p| p.to_path_buf()))?;
+
+    // 1) Production layout: depends.jar next to the binary
+    let candidate = exe_dir.join("depends.jar");
+    if candidate.exists() {
+        return Some(candidate);
+    }
+
+    // 2) Repo layout: <repo>/target/release/neodepends -> <repo>/artifacts/depends.jar
+    let repo_root = exe_dir.parent().and_then(|p| p.parent()).map(|p| p.to_path_buf())?;
+    let candidate = repo_root.join("artifacts").join("depends.jar");
+    if candidate.exists() {
+        return Some(candidate);
+    }
+
+    // 3) Alternate repo layout: <repo>/depends.jar
+    let candidate = repo_root.join("depends.jar");
+    if candidate.exists() {
+        return Some(candidate);
+    }
+
+    None
 }
 
 #[derive(Debug, Deserialize)]
