@@ -49,8 +49,16 @@ jobs:
           cp "target/release/${BIN}" "${DIST_DIR}/${BIN}"
           cp README.md LICENSE "${DIST_DIR}/" || true
 
+          # Full bundle: binary + tools + language configs + examples.
+          BUNDLE_DIR="dist/${BIN}-bundle-${TAG}-${HOST}"
+          mkdir -p "${BUNDLE_DIR}"
+          cp "target/release/${BIN}" "${BUNDLE_DIR}/${BIN}"
+          cp README.md LICENSE CHANGELOG.md RESOLVERS_AND_DEP_KINDS.md "${BUNDLE_DIR}/" 2>/dev/null || true
+          cp -R tools languages examples "${BUNDLE_DIR}/"
+
           mkdir -p dist
           tar -C dist -czf "dist/${BIN}-${TAG}-${HOST}.tar.gz" "${BIN}-${TAG}-${HOST}"
+          tar -C dist -czf "dist/${BIN}-bundle-${TAG}-${HOST}.tar.gz" "${BIN}-bundle-${TAG}-${HOST}"
 
       - name: Package (windows)
         if: runner.os == 'Windows'
@@ -65,6 +73,19 @@ jobs:
           if (Test-Path "README.md") { Copy-Item "README.md" "$distDir/README.md" }
           if (Test-Path "LICENSE") { Copy-Item "LICENSE" "$distDir/LICENSE" }
           Compress-Archive -Force -Path "$distDir/*" -DestinationPath "dist/$bin-$tag-$host.zip"
+
+          # Full bundle: binary + tools + language configs + examples.
+          $bundleDir = "dist/$bin-bundle-$tag-$host"
+          New-Item -ItemType Directory -Force -Path $bundleDir | Out-Null
+          Copy-Item "target/release/$bin.exe" "$bundleDir/$bin.exe"
+          if (Test-Path "README.md") { Copy-Item "README.md" "$bundleDir/README.md" }
+          if (Test-Path "LICENSE") { Copy-Item "LICENSE" "$bundleDir/LICENSE" }
+          if (Test-Path "CHANGELOG.md") { Copy-Item "CHANGELOG.md" "$bundleDir/CHANGELOG.md" }
+          if (Test-Path "RESOLVERS_AND_DEP_KINDS.md") { Copy-Item "RESOLVERS_AND_DEP_KINDS.md" "$bundleDir/RESOLVERS_AND_DEP_KINDS.md" }
+          Copy-Item -Recurse -Force "tools" "$bundleDir/tools"
+          Copy-Item -Recurse -Force "languages" "$bundleDir/languages"
+          Copy-Item -Recurse -Force "examples" "$bundleDir/examples"
+          Compress-Archive -Force -Path "$bundleDir/*" -DestinationPath "dist/$bin-bundle-$tag-$host.zip"
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
