@@ -44,13 +44,15 @@ jobs:
           HOST="$(rustc -vV | awk '/^host: /{print $2}')"
           BIN="neodepends"
 
-          DIST_DIR="dist/${BIN}-${TAG}-${HOST}"
-          mkdir -p "${DIST_DIR}"
-          cp "target/release/${BIN}" "${DIST_DIR}/${BIN}"
-          cp README.md LICENSE "${DIST_DIR}/" || true
+          # Full bundle: binary + tools + languages + artifacts (depends.jar) + examples
+          BUNDLE_DIR="dist/${BIN}-pyfork-${TAG}-${HOST}"
+          mkdir -p "${BUNDLE_DIR}"
+          cp "target/release/${BIN}" "${BUNDLE_DIR}/${BIN}"
+          cp README.md LICENSE "${BUNDLE_DIR}/" || true
+          cp -R tools languages artifacts examples "${BUNDLE_DIR}/" 2>/dev/null || true
 
           mkdir -p dist
-          tar -C dist -czf "dist/${BIN}-${TAG}-${HOST}.tar.gz" "${BIN}-${TAG}-${HOST}"
+          tar -C dist -czf "dist/${BIN}-pyfork-${TAG}-${HOST}.tar.gz" "${BIN}-pyfork-${TAG}-${HOST}"
 
       - name: Package (windows)
         if: runner.os == 'Windows'
@@ -59,12 +61,18 @@ jobs:
           $tag = "${env:GITHUB_REF_NAME}"
           $host = (rustc -vV | Select-String '^host: ' | ForEach-Object { $_.ToString().Split(' ')[1] })
           $bin = "neodepends"
-          $distDir = "dist/$bin-$tag-$host"
-          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
-          Copy-Item "target/release/$bin.exe" "$distDir/$bin.exe"
-          if (Test-Path "README.md") { Copy-Item "README.md" "$distDir/README.md" }
-          if (Test-Path "LICENSE") { Copy-Item "LICENSE" "$distDir/LICENSE" }
-          Compress-Archive -Force -Path "$distDir/*" -DestinationPath "dist/$bin-$tag-$host.zip"
+
+          # Full bundle: binary + tools + languages + artifacts (depends.jar) + examples
+          $bundleDir = "dist/$bin-pyfork-$tag-$host"
+          New-Item -ItemType Directory -Force -Path $bundleDir | Out-Null
+          Copy-Item "target/release/$bin.exe" "$bundleDir/$bin.exe"
+          if (Test-Path "README.md") { Copy-Item "README.md" "$bundleDir/README.md" }
+          if (Test-Path "LICENSE") { Copy-Item "LICENSE" "$bundleDir/LICENSE" }
+          if (Test-Path "tools") { Copy-Item -Recurse -Force "tools" "$bundleDir/tools" }
+          if (Test-Path "languages") { Copy-Item -Recurse -Force "languages" "$bundleDir/languages" }
+          if (Test-Path "artifacts") { Copy-Item -Recurse -Force "artifacts" "$bundleDir/artifacts" }
+          if (Test-Path "examples") { Copy-Item -Recurse -Force "examples" "$bundleDir/examples" }
+          Compress-Archive -Force -Path "$bundleDir/*" -DestinationPath "dist/$bin-pyfork-$tag-$host.zip"
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
