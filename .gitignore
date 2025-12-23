@@ -10,7 +10,6 @@ tools/generate_ground_truth_java_toy.py
 
 # Local test scripts and results
 run_all_final_tests.sh
-run_dependency_analysis.sh
 NEODEPENDS_DEICIDE/
 RESULTS_QuickStart/
 RESULTS_QuickStart_Examples/
@@ -21,6 +20,4 @@ TEST_AUTO/
 # Documentation files (local drafts)
 CHANGELOG.md
 CONTRIBUTING.md
-README_QuickStart.md
 RELEASING.md
-RESOLVERS_AND_DEP_KINDS.md

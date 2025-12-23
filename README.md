@@ -8,7 +8,7 @@ This repository is a fork that adds a Python-focused DV8 export pipeline (post-p
 
 ### Release bundle (recommended)
 
-Download a release artifact from this fork and unzip it. The bundle includes:
+Download the latest release artifact from this fork and unzip it. The bundle includes:
 
 - `neodepends` executable
 - `depends.jar` (required for `--depends`)
@@ -16,7 +16,55 @@ Download a release artifact from this fork and unzip it. The bundle includes:
 - `tools/` (Python DV8 export helpers)
 - `examples/` (toy projects)
 
-## QuickStart: Automated Examples
+
+## QuickStart Release Bundle: Automated analysis with Interactive Script
+
+For a guided analysis experience, use the interactive script that prompts you for all required settings:
+
+**macOS / Linux:**
+
+```bash
+cd /path/to/neodepends
+chmod +x run_dependency_analysis.sh
+./run_dependency_analysis.sh
+```
+
+**Windows:**
+
+```powershell
+cd C:\path\to\neodepends
+bash run_dependency_analysis.sh
+```
+
+The script will prompt you for:
+
+- **NeoDepends binary path** - Press Enter to use `./neodepends` (default) or provide a custom path
+- **Input repository path** - Path to your project directory (tab completion enabled)
+- **Output directory path** - Where to save results (tab completion enabled)
+- **Language** - `python` or `java`
+- **Model/Resolver** - `d` or `s` (shortcuts for `depends` or `stackgraphs`)
+
+The script automatically applies recommended settings:
+
+- Structured DV8 hierarchy for easy navigation
+- Architecture filtering for cleaner results
+- For Python with StackGraphs: AST-based classification and false positive filtering
+
+Example session:
+
+```bash
+$ ./run_dependency_analysis.sh
+Enter neodepends binary path [default: ./neodepends]:
+Enter input repository path: examples/TrainTicketSystem_TOY_PYTHON_FIRST/tts
+Enter output directory path: ./test-package
+Enter language (python or java): python
+Enter model (d/D/depends or s/S/stackgraphs): s
+...
+```
+
+**Results:** Open the generated `dependencies.<resolver>.filtered.dv8-dsm-v3.json` file in DV8 Explorer to visualize your code dependencies.
+
+## QuickStart: Automated Analysis on Examples
 
 The easiest way to get started is to run NeoDepends on the included example projects:
 
@@ -118,6 +166,7 @@ py -3 tools\neodepends_python_export.py `
 
 **Note:** Single-file analysis will only show dependencies visible within that file. For complete dependency graphs including imports from other modules in your project, analyze the entire package directory instead.
 
+
 ### Java Projects
 
 **Best results:** Use `--depends` with `--depends-jar ./artifacts/depends.jar` for accurate Java dependency extraction.
@@ -170,53 +219,6 @@ py -3 tools\export_dv8_from_neodepends_db.py `
 
 **Note:** Java analysis requires a Java runtime to be installed on your system.
 
-
-## QuickStart: Interactive Script
-
-For a guided analysis experience, use the interactive script that prompts you for all required settings:
-
-**macOS / Linux:**
-
-```bash
-cd /path/to/neodepends
-chmod +x run_dependency_analysis.sh
-./run_dependency_analysis.sh
-```
-
-**Windows:**
-
-```powershell
-cd C:\path\to\neodepends
-bash run_dependency_analysis.sh
-```
-
-The script will prompt you for:
-
-- **NeoDepends binary path** - Press Enter to use `./neodepends` (default) or provide a custom path
-- **Input repository path** - Path to your project directory (tab completion enabled)
-- **Output directory path** - Where to save results (tab completion enabled)
-- **Language** - `python` or `java`
-- **Model/Resolver** - `d` or `s` (shortcuts for `depends` or `stackgraphs`)
-
-The script automatically applies recommended settings:
-
-- Structured DV8 hierarchy for easy navigation
-- Architecture filtering for cleaner results
-- For Python with StackGraphs: AST-based classification and false positive filtering
-
-Example session:
-
-```bash
-$ ./run_dependency_analysis.sh
-Enter neodepends binary path [default: ./neodepends]:
-Enter input repository path: examples/TrainTicketSystem_TOY_PYTHON_FIRST/tts
-Enter output directory path: ./test-package
-Enter language (python or java): python
-Enter model (d/D/depends or s/S/stackgraphs): s
-...
-```
-
-**Results:** Open the generated `dependencies.<resolver>.filtered.dv8-dsm-v3.json` file in DV8 Explorer to visualize your code dependencies.
 
 ---
 
@@ -380,3 +382,18 @@ Where `<resolver>` is one of:
 ## Examples
 
 See `examples/README.md` for bundled toy projects and runnable commands.
+
+---
+
+## Contributors
+
+This Python fork (PyFork) was developed and maintained by:
+
+- **Christoph Haring** (<charing@hawaii.edu>) - Python export pipeline, DV8 integration, single-file analysis
+- **Bao Vuong** (<baovg.a1.k2023@gmail.com>) - Python tooling and testing
+
+Original NeoDepends core by **Jason Lefever** (<jason.titus.lefever@gmail.com>)
+
+### Citation
+
+If you use this fork in research, please cite both the original NeoDepends project and this Python fork extension.
