@@ -17,3 +17,10 @@ RESULTS_QuickStart_Examples/
 
 # Local workspace paths accidentally created by running tools from within this repo
 TEST_AUTO/
+
+# Documentation files (local drafts)
+CHANGELOG.md
+CONTRIBUTING.md
+README_QuickStart.md
+RELEASING.md
+RESOLVERS_AND_DEP_KINDS.md
