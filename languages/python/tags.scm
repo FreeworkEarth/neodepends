@@ -28,27 +28,30 @@
 ; which breaks downstream indexing and creates Missing/Extra edges.
 
 ; ---------------------------------------------------------------------------
-; Methods / functions
+; Functions and Methods
 ; ---------------------------------------------------------------------------
-; IMPORTANT: Only tag top-level functions and direct class methods.
+; IMPORTANT: Distinguish between module-level functions and class methods.
+;
+; - Module-level functions (top-level in a .py file) are tagged as Function
+; - Class methods (defined inside a class body) are tagged as Method
 ;
 ; If we tag every `function_definition` node unconditionally, we also tag nested
 ; helper functions inside methods (e.g., `def filter(...):` inside `apply()`).
 ; That inflates the entity set and moves dependencies to the wrong owner
 ; (extra/missing edges vs ground-truth).
 ;
-; Top-level function: `def f(...): ...`
+; Module-level function: `def f(...): ...`
 (
   (module
     (function_definition
-      name: (identifier) @name) @tag.Method)
+      name: (identifier) @name) @tag.Function)
 )
-; Decorated top-level function: `@decorator\ndef f(...): ...`
+; Decorated module-level function: `@decorator\ndef f(...): ...`
 (
   (module
     (decorated_definition
       (function_definition
-        name: (identifier) @name) @tag.Method))
+        name: (identifier) @name) @tag.Function))
 )
 ; Direct class method: `class C: def m(...): ...`
 (

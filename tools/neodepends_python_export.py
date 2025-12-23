@@ -260,7 +260,7 @@ def _ancestor_class_name(entities: Dict[bytes, DbEntity], entity_id: bytes) -> O
 
 def _display_name(entities: Dict[bytes, DbEntity], entity_id: bytes) -> str:
     ent = entities[entity_id]
-    if ent.kind in {"Method", "Field"}:
+    if ent.kind in {"Method", "Function", "Field"}:
         class_name = _ancestor_class_name(entities, entity_id)
         if class_name:
             return f"{class_name}.{ent.name}"
@@ -921,9 +921,14 @@ def _structured_name(
             return None
         return f"{class_prefix}/fields/{ent.name} (Field)"
 
+    if ent.kind == "Function":
+        # Module-level functions (new: kind=Function for module-level, kind=Method for class methods)
+        return f"{file_name}/functions/{ent.name} (Function)"
+
     if ent.kind == "Method":
-        # Module-level functions are stored as kind=Method with parent=File.
+        # Class methods only (module-level functions now use kind=Function)
         if not class_segments:
+            # Fallback for old data where module functions were Method with parent=File
             return f"{file_name}/functions/{ent.name} (Function)"
         if ent.name in {"__init__", "__new__"}:
             return f"{class_prefix}/constructors/{ent.name} (Constructor)"
@@ -1179,15 +1184,15 @@ def _owner_class_entity(entities: Dict[bytes, DbEntity], entity_id: bytes) -> Op
 
 def _is_nested_method(entities: Dict[bytes, DbEntity], entity_id: bytes) -> bool:
     """
-    Return True if this Method entity is nested inside another Method (i.e., a local helper
+    Return True if this Method/Function entity is nested inside another Method/Function (i.e., a local helper
     function defined inside a method/function body).
 
     Why (handcount alignment): the handcount ground truth treats dependencies inside nested
-    helper functions as part of the *enclosing* method. Keeping nested Method entities
+    helper functions as part of the *enclosing* method. Keeping nested Method/Function entities
     produces systematic "extra" edges (e.g. `apply` + `filter` both using the same fields).
     """
     ent = entities.get(entity_id)
-    if ent is None or ent.kind != "Method":
+    if ent is None or ent.kind not in {"Method", "Function"}:
         return False
     cur = ent
     seen: Set[bytes] = set()
@@ -1196,7 +1201,7 @@ def _is_nested_method(entities: Dict[bytes, DbEntity], entity_id: bytes) -> bool
             return False
         seen.add(cur.id)
         parent = entities[cur.parent_id]
-        if parent.kind == "Method":
+        if parent.kind in {"Method", "Function"}:
             # Guard against duplicate tagging artifacts where a method ends up parented by a
             # method with the same name (e.g. two Method entities for `with_mask`, one nested
             # under the other). Treat these as duplicates, not real nested helper functions.
@@ -1457,10 +1462,10 @@ def export_dv8_full_project(
             file_level_edges.append((src_node, f"(External File) {tgt_file_name}", dep_kind))
 
     # (2) Entity-level edges for drill-down.
-    # Keep focus entities: file/class/method/field entities that belong to focus files.
+    # Keep focus entities: file/class/method/function/field entities that belong to focus files.
     focus_entity_ids: Set[bytes] = set()
     for eid, ent in entities.items():
-        if ent.kind not in {"File", "Class", "Method", "Field"}:
+        if ent.kind not in {"File", "Class", "Method", "Function", "Field"}:
             continue
         file_id = _ancestor_file_id(entities, eid, file_id_memo)
         if file_id is None:
@@ -1507,12 +1512,12 @@ def export_dv8_full_project(
                 continue
             src_kind = entities[src_id].kind
             tgt_kind = entities[tgt_id].kind
-            # Collapse Python nested helper functions: ignore nested Method entities.
+            # Collapse Python nested helper functions: ignore nested Method/Function entities.
             # The handcount ground truth attributes nested-function dependencies to the
-            # enclosing method, so keeping them here mostly creates duplicate "extra" edges.
-            if src_kind == "Method" and _is_nested_method(entities, src_id):
+            # enclosing method/function, so keeping them here mostly creates duplicate "extra" edges.
+            if src_kind in {"Method", "Function"} and _is_nested_method(entities, src_id):
                 continue
-            if tgt_kind == "Method" and _is_nested_method(entities, tgt_id):
+            if tgt_kind in {"Method", "Function"} and _is_nested_method(entities, tgt_id):
                 continue
             # Strict handcount schema:
             # - Import: File -> File
@@ -1524,11 +1529,11 @@ def export_dv8_full_project(
                 continue
             if dep_kind == "Extend" and not (src_kind == "Class" and tgt_kind == "Class"):
                 continue
-            if dep_kind == "Create" and not (src_kind == "Method" and tgt_kind == "Class"):
+            if dep_kind == "Create" and not (src_kind in {"Method", "Function"} and tgt_kind == "Class"):
                 continue
-            if dep_kind == "Call" and not (src_kind == "Method" and tgt_kind == "Method"):
+            if dep_kind == "Call" and not (src_kind in {"Method", "Function"} and tgt_kind in {"Method", "Function"}):
                 continue
-            if dep_kind == "Use" and not (src_kind == "Method" and tgt_kind == "Field"):
+            if dep_kind == "Use" and not (src_kind in {"Method", "Function"} and tgt_kind == "Field"):
                 continue
             if dep_kind == "Use" and _owner_class_entity(entities, src_id) is None:
                 # Handcount rules treat Use as "method/constructor uses its own fields" (self.field),
@@ -1538,13 +1543,13 @@ def export_dv8_full_project(
             # Avoid spurious constructor calls: handcount treats constructor invocations as Create edges,
             # and keeps Call edges for `super().__init__` only (i.e., constructor -> constructor on base).
             if dep_kind == "Call" and tgt_kind == "Method" and entities[tgt_id].name in {"__init__", "__new__"}:
-                if src_kind != "Method" or entities[src_id].name not in {"__init__", "__new__"}:
+                if src_kind not in {"Method", "Function"} or (src_kind == "Method" and entities[src_id].name not in {"__init__", "__new__"}):
                     continue
 
-            # Handcount rules treat "type coupling" (Method -> Class Use) as noise by default,
+            # Handcount rules treat "type coupling" (Method/Function -> Class Use) as noise by default,
             # and Field -> Method edges as directionally wrong for "uses".
             # Some resolvers also model `super().__init__` as Method -> Class Call; drop those too.
-            if src_kind == "Method" and tgt_kind == "Class" and dep_kind != "Create":
+            if src_kind in {"Method", "Function"} and tgt_kind == "Class" and dep_kind != "Create":
                 continue
             if src_kind == "Field" and tgt_kind == "Method":
                 continue
@@ -2232,15 +2237,15 @@ def main() -> int:
 
             # Output paths (always include resolver/mode in filenames to avoid ambiguity when
             # comparing runs or sharing results).
-            db_path = out_dir / f"dependencies_{option_tag}.db"
-            raw_db_path = out_dir / f"dependencies_{option_tag}.raw.db"
-            filtered_raw_db_path = out_dir / f"dependencies_{option_tag}.raw.filtered.db"
-            full_dep_out_path = out_dir / f"dependencies_{option_tag}.full.dv8-dependency.json"
-            raw_full_dep_out_path = out_dir / f"dependencies_{option_tag}.raw.full.dv8-dependency.json"
-            raw_filtered_full_dep_out_path = out_dir / f"dependencies_{option_tag}.raw.filtered.full.dv8-dependency.json"
-            file_level_out_path = out_dir / f"dependencies_{option_tag}.file.dv8-dependency.json"
-            raw_file_level_out_path = out_dir / f"dependencies_{option_tag}.raw.file.dv8-dependency.json"
-            raw_filtered_file_level_out_path = out_dir / f"dependencies_{option_tag}.raw.filtered.file.dv8-dependency.json"
+            db_path = out_dir / f"dependencies.{option_tag}.db"
+            raw_db_path = out_dir / f"dependencies.{option_tag}.raw.db"
+            filtered_raw_db_path = out_dir / f"dependencies.{option_tag}.raw_filtered.db"
+            full_dep_out_path = out_dir / f"dependencies.{option_tag}.filtered.dv8-dsm-v3.json"
+            raw_full_dep_out_path = out_dir / f"dependencies.{option_tag}.raw.dv8-dsm-v3.json"
+            raw_filtered_full_dep_out_path = out_dir / f"dependencies.{option_tag}.raw_filtered.dv8-dsm-v3.json"
+            file_level_out_path = out_dir / f"dependencies.{option_tag}.file.dv8-dsm-v3.json"
+            raw_file_level_out_path = out_dir / f"dependencies.{option_tag}.raw_file.dv8-dsm-v3.json"
+            raw_filtered_file_level_out_path = out_dir / f"dependencies.{option_tag}.raw_filtered_file.dv8-dsm-v3.json"
 
             raw_out_dir = out_dir / "raw"
             raw_filtered_out_dir = out_dir / "raw_filtered"

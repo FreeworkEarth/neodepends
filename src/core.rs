@@ -480,6 +480,7 @@ pub enum EntityKind {
     Class,
     Enum,
     Field,
+    Function,
     Interface,
     Method,
     Record,

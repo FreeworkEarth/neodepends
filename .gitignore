@@ -4,5 +4,9 @@
 __pycache__/
 *.pyc
 
+# Backup and temporary files
+tools/neodepends_python_export.py.broken_backup
+tools/generate_ground_truth_java_toy.py
+
 # Local workspace paths accidentally created by running tools from within this repo
 TEST_AUTO/

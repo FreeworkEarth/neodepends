@@ -229,14 +229,14 @@ def main() -> int:
         if not child.is_dir():
             continue
         # Prefer the primary DB produced by neodepends_python_export.py:
-        #   dependencies_<tag>.db
+        #   dependencies.<tag>.filtered.db
         # and ignore raw snapshots:
-        #   dependencies_<tag>.raw.db, dependencies_<tag>.raw.filtered.db
+        #   dependencies.<tag>.raw.db, dependencies.<tag>.raw_filtered.db
         has_db = any(
             p.is_file()
             and p.suffix == ".db"
-            and p.name.startswith("dependencies_")
-            and ".raw" not in p.name
+            and (p.name.startswith("dependencies.") or p.name.startswith("dependencies_"))
+            and p.name.endswith(".filtered.db")
             for p in child.iterdir()
         )
         if has_db:
@@ -261,8 +261,8 @@ def main() -> int:
                 for p in rdir.iterdir()
                 if p.is_file()
                 and p.suffix == ".db"
-                and p.name.startswith("dependencies_")
-                and ".raw" not in p.name
+                and (p.name.startswith("dependencies.") or p.name.startswith("dependencies_"))
+                and p.name.endswith(".filtered.db")
             ]
         )
         if not candidates:

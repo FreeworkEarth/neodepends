@@ -10,17 +10,24 @@ from typing import Dict, Iterable, List, Sequence, Set, Tuple
 
 Edge = Tuple[str, str, str]
 
-def _professor_to_handcount_name(name: str) -> str:
+def _normalize_to_handcount_name(name: str) -> str:
     """
-    Convert professor-style DV8 naming into the handcount-style naming.
+    Convert NeoDepends DV8 naming (structured/flat) into the handcount-style naming.
 
-    Professor examples:
+    Structured ("professor"/"structured") examples:
       file.py/self (File)
       file.py/Class/self (Class)
       file.py/Class/constructors/__init__ (Constructor)
       file.py/Class/methods/foo (Method)
       file.py/Class/fields/bar (Field)
       file.py/functions/top (Function)
+
+    Flat examples:
+      file.py/self (File)
+      file.py/-self Foo (Class)
+      file.py/+CONSTRUCTORS/Foo/__init__ (Constructor)
+      file.py/+METHODS/Foo/foo (Method)
+      file.py/+FIELDS/Foo/bar (Field)
 
     Handcount examples:
       file.py/module (Module)
@@ -33,6 +40,48 @@ def _professor_to_handcount_name(name: str) -> str:
     if name.endswith("/self (File)"):
         return name[: -len("/self (File)")] + "/module (Module)"
 
+    # Flat optional subclass grouping:
+    #   file.py/+SUBCLASSES/Base/-self Sub (Class)
+    # Normalize by dropping the grouping and treating the remaining node normally.
+    if "/+SUBCLASSES/" in name and ".py/" in name:
+        file_part, rest = name.split(".py/", 1)
+        file_part = file_part + ".py"
+        parts = [p for p in rest.split("/") if p]
+        # Expect: ["+SUBCLASSES", "<Base>", ...]
+        if len(parts) >= 3 and parts[0] == "+SUBCLASSES":
+            rest2 = "/".join(parts[2:])
+            return _normalize_to_handcount_name(f"{file_part}/{rest2}")
+
+    # Flat class marker: file.py/-self Foo (Class) -> file.py/CLASSES/Foo (Class)
+    if "/-self " in name and name.endswith(" (Class)"):
+        file_part, rest = name.split("/-self ", 1)
+        cls = rest[: -len(" (Class)")].strip()
+        return f"{file_part}/CLASSES/{cls} (Class)"
+
+    # Flat member folders: +METHODS/+FIELDS/+CONSTRUCTORS
+    for seg, repl in (
+        ("/+FUNCTIONS/", "/FUNCTIONS/"),
+        ("/+METHODS/", "/METHODS/"),
+        ("/+FIELDS/", "/FIELDS/"),
+        ("/+CONSTRUCTORS/", "/CONSTRUCTORS/"),
+    ):
+        if seg in name and ".py" in name:
+            # file.py/+FUNCTIONS/x (Function) -> file.py/FUNCTIONS/x (Function)
+            if seg == "/+FUNCTIONS/":
+                return name.replace("/+FUNCTIONS/", "/FUNCTIONS/")
+            # file.py/+METHODS/Foo/bar (Method) -> file.py/CLASSES/Foo/METHODS/bar (Method)
+            file_part, after_file = name.split(".py", 1)
+            file_part = file_part + ".py"
+            rest = after_file.lstrip("/")
+            before, tail = rest.split(seg.lstrip("/"), 1)
+            _ = before  # unused
+            # tail is: Foo/thing (Kind)
+            parts = tail.split("/", 1)
+            if len(parts) != 2:
+                break
+            cls, member = parts[0], parts[1]
+            return f"{file_part}/CLASSES/{cls}{repl}{member}"
+
     if "/functions/" in name:
         # file.py/functions/x (Function) -> file.py/FUNCTIONS/x (Function)
         return name.replace("/functions/", "/FUNCTIONS/")
@@ -43,6 +92,14 @@ def _professor_to_handcount_name(name: str) -> str:
         cls_path = rest[: -len("/self (Class)")]
         # Preserve nested classes by joining with "."
         cls_name = ".".join([p for p in cls_path.split("/") if p])
+        # Normalize optional nesting markers used by some DV8 hierarchies.
+        # - `inner_classes` is a synthetic folder used for nested classes.
+        if ".inner_classes." in cls_name:
+            cls_name = cls_name.replace(".inner_classes.", ".")
+        # NeoDepends "structured" may optionally nest subclasses under `<Base>.subclasses.<Sub>`.
+        # The handcount naming convention used for comparisons typically uses just `<Sub>`.
+        if ".subclasses." in cls_name:
+            cls_name = cls_name.split(".subclasses.")[-1]
         return f"{file_part}/CLASSES/{cls_name} (Class)"
 
     for seg, repl in (
@@ -56,6 +113,10 @@ def _professor_to_handcount_name(name: str) -> str:
             before, after = rest.split(seg, 1)
             # `before` is class path (possibly nested)
             cls_name = ".".join([p for p in before.split("/") if p])
+            if ".inner_classes." in cls_name:
+                cls_name = cls_name.replace(".inner_classes.", ".")
+            if ".subclasses." in cls_name:
+                cls_name = cls_name.split(".subclasses.")[-1]
             return f"{file_part}/CLASSES/{cls_name}{repl}{after}"
 
     return name
@@ -64,12 +125,25 @@ def _maybe_normalize_neodepends(edges: Set[Edge], *, normalize_professor: bool) 
     if not normalize_professor:
         return edges
     # Quick heuristic: only run if we see professor-style markers.
-    looks_prof = any(("/self (Class)" in s or "/self (File)" in s or "/methods/" in s or "/fields/" in s) for s, _t, _k in edges)
+    looks_prof = any(
+        (
+            "/self (Class)" in s
+            or "/self (File)" in s
+            or "/methods/" in s
+            or "/fields/" in s
+            or "/-self " in s
+            or "/+SUBCLASSES/" in s
+            or "/+METHODS/" in s
+            or "/+FIELDS/" in s
+            or "/+CONSTRUCTORS/" in s
+        )
+        for s, _t, _k in edges
+    )
     if not looks_prof:
         return edges
     out: Set[Edge] = set()
     for s, t, k in edges:
-        out.add((_professor_to_handcount_name(s), _professor_to_handcount_name(t), k))
+        out.add((_normalize_to_handcount_name(s), _normalize_to_handcount_name(t), k))
     return out
 
 
