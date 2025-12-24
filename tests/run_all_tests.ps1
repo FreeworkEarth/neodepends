@@ -271,8 +271,8 @@ if (Test-Path "$VideoClipTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v
     $VideoClipSize = (Get-Item "$VideoClipTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json").Length
     Log-Info "Output size: $VideoClipSize bytes"
 
-    # Count dependencies in DB and JSON
-    $VideoClipDbDeps = & sqlite3 "$VideoClipTestDir\dependencies.stackgraphs_ast.db" "SELECT COUNT(*) FROM deps;" 2>$null
+    # Count dependencies in DB and JSON (using Python for cross-platform SQLite access)
+    $VideoClipDbDeps = & py -3 -c "import sqlite3; conn=sqlite3.connect('$VideoClipTestDir/dependencies.stackgraphs_ast.db'.replace('\\', '/')); print(conn.execute('SELECT COUNT(*) FROM deps').fetchone()[0]); conn.close()" 2>$null
     if (-not $VideoClipDbDeps) { $VideoClipDbDeps = 0 }
 
     $VideoClipJsonCells = & py -3 -c "import json; data=json.load(open('$VideoClipTestDir/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
@@ -339,8 +339,8 @@ if (Test-Path $MoviepyPath) {
             $MoviepyFieldsMoved = 0
         }
 
-        # Count dependencies in DB and JSON
-        $MoviepyDbDeps = & sqlite3 "$MoviepyTestDir\dependencies.stackgraphs_ast.db" "SELECT COUNT(*) FROM deps;" 2>$null
+        # Count dependencies in DB and JSON (using Python for cross-platform SQLite access)
+        $MoviepyDbDeps = & py -3 -c "import sqlite3; conn=sqlite3.connect('$MoviepyTestDir/dependencies.stackgraphs_ast.db'.replace('\\', '/')); print(conn.execute('SELECT COUNT(*) FROM deps').fetchone()[0]); conn.close()" 2>$null
         if (-not $MoviepyDbDeps) { $MoviepyDbDeps = 0 }
 
         $MoviepyJsonCells = & py -3 -c "import json; data=json.load(open('$MoviepyTestDir/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
@@ -405,8 +405,8 @@ if (Test-Path $SurveyPath) {
             $SurveyFieldsMoved = 0
         }
 
-        # Count dependencies in DB and JSON
-        $SurveyDbDeps = & sqlite3 "$SurveyTestDir\dependencies.stackgraphs_ast.db" "SELECT COUNT(*) FROM deps;" 2>$null
+        # Count dependencies in DB and JSON (using Python for cross-platform SQLite access)
+        $SurveyDbDeps = & py -3 -c "import sqlite3; conn=sqlite3.connect('$SurveyTestDir/dependencies.stackgraphs_ast.db'.replace('\\', '/')); print(conn.execute('SELECT COUNT(*) FROM deps').fetchone()[0]); conn.close()" 2>$null
         if (-not $SurveyDbDeps) { $SurveyDbDeps = 0 }
 
         $SurveyJsonCells = & py -3 -c "import json; data=json.load(open('$SurveyTestDir/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
