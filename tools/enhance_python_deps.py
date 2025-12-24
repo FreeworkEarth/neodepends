@@ -2,7 +2,7 @@
 """
 Python Dependency Enhancement Script
 
-This script post-processes NeoDepends databases to add Method→Field dependencies
+This script post-processes NeoDepends databases to add Method->Field dependencies
 for Python code. It scans Python method bodies for self.<field> patterns and creates
 USE dependencies from methods to fields.
 
@@ -985,7 +985,13 @@ def fix_field_parent_ids(db_path: str) -> int:
             "merged": merged_examples,
         },
     }
-    report_path = Path(db_path).parent / "enhance_python_deps.report.json"
+    # Put report in details/ subdirectory if it exists, otherwise same directory as DB
+    db_parent = Path(db_path).parent
+    details_dir = db_parent / "details"
+    if details_dir.exists() and details_dir.is_dir():
+        report_path = details_dir / "enhance_python_deps.report.json"
+    else:
+        report_path = db_parent / "enhance_python_deps.report.json"
     try:
         report_path.write_text(__import__("json").dumps(report, indent=2), encoding="utf-8")
         print(f"[INFO] Wrote report: {report_path}")
@@ -996,11 +1002,11 @@ def fix_field_parent_ids(db_path: str) -> int:
     return updated_count
 
 def verify_enhancement(db_path: str):
-    """Verify that Method→Field dependencies were added."""
+    """Verify that Method->Field dependencies were added."""
     conn = sqlite3.Connection(db_path)
     cursor = conn.cursor()
 
-    # Count Method→Field dependencies
+    # Count Method->Field dependencies
     cursor.execute("""
         SELECT COUNT(*)
         FROM deps d
@@ -1058,8 +1064,8 @@ def main() -> int:
     print(f"Source root: {source_root}")
     print()
 
-    # Step 1: Add Method→Field dependencies
-    print("STEP 1: Adding Method→Field dependencies...")
+    # Step 1: Add Method->Field dependencies
+    print("STEP 1: Adding Method->Field dependencies...")
     print("="*70)
     new_deps, methods = enhance_python_dependencies(db_path, source_root, profile=profile)
 
@@ -1079,7 +1085,7 @@ def main() -> int:
 
     print(f"\n{'='*70}")
     print("COMPLETE SUCCESS!")
-    print(f"  - {method_field_count} Method→Field dependencies created")
+    print(f"  - {method_field_count} Method->Field dependencies created")
     print(f"  - {fields_fixed} fields now siblings with methods")
     print(f"  - Database ready for Deicide hierarchical clustering!")
     print(f"{'='*70}\n")

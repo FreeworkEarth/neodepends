@@ -1,16 +1,11 @@
-# Python Requirements for NeoDepends Tools
+# NeoDepends Python Dependencies
 #
-# All tools in the tools/ directory use only Python standard library modules.
-# Python 3.8+ is required.
+# These packages are required to run NeoDepends dependency analysis
+# Install with: python3 -m pip install -r requirements.txt
 #
-# No external dependencies are needed for:
-# - neodepends_python_export.py
-# - export_dv8_from_neodepends_db.py
-# - enhance_python_deps.py
-# - filter_false_positives.py
-# - compare_to_handcount.py
-# - compare_dv8_to_ground_truth.py
-# - generate_ground_truth_generic.py
-# - generate_ground_truth_java_toy.py
-# - merge_diff_reports.py
-# - per_file_diff_report.py
+# Note: NeoDepends primarily uses Python's standard library.
+# No external packages are strictly required for basic functionality.
+
+# Optional: If you want to use tree-sitter-graph features directly
+# (already bundled in release binaries, so this is optional)
+# tree-sitter-graph>=0.1.0

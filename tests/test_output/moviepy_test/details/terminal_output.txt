@@ -1,0 +1,348 @@
+timestamp: 2025-12-23T19:51:26.165449
+resolver: stackgraphs
+project_root: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/examples_testing/Py/moviepy example/moviepy
+focus_path: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/examples_testing/Py/moviepy example/moviepy
+output: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test
+
+[CMD] /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/target/release/neodepends --version
+neodepends 0.0.12
+[CMD] /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/target/release/neodepends --force --input=/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/examples_testing/Py/moviepy example/moviepy --output=/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/dependencies.stackgraphs_ast.db --format=sqlite --resources=entities,deps,contents --langs=python --stackgraphs --stackgraphs-python-mode=ast
+[2025-12-24T05:51:26Z INFO  neodepends::filesystem] Project opened at: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/examples_testing/Py/moviepy example/moviepy
+[2025-12-24T05:51:26Z INFO  neodepends] Extracting and writing entities...
+[2025-12-24T05:51:27Z INFO  neodepends] Extracting and writing deps...
+[2025-12-24T05:51:27Z INFO  neodepends] Extracting and writing contents...
+[2025-12-24T05:51:27Z INFO  neodepends] Finished in 959ms
+[CMD] /opt/homebrew/opt/python@3.13/bin/python3.13 /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tools/filter_false_positives.py /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw.db /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw_filtered.db
+Copying database from /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw.db to /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw_filtered.db...
+Analyzing dependencies...
+Total dependencies: 2716
+Detecting false positives...
+Found 50 false positive dependencies
+
+False Positives Breakdown:
+  sibling_method: 46
+  parent_class: 4
+
+Examples of false positives being removed:
+  1. [__del__ (Method)] -> [close (Method)] at row 100 (reason: sibling_method)
+  2. [__exit__ (Method)] -> [close (Method)] at row 108 (reason: sibling_method)
+  3. [__del__ (Method)] -> [close (Method)] at row 174 (reason: sibling_method)
+  4. [__exit__ (Method)] -> [close (Method)] at row 182 (reason: sibling_method)
+  5. [__exit__ (Method)] -> [close (Method)] at row 258 (reason: sibling_method)
+  ... and 45 more
+
+Removing false positives from database...
+Removed 50 false positive dependencies
+
+Final Statistics:
+  Original dependencies: 2716
+  False positives removed: 50
+  Cleaned dependencies: 2666
+  Reduction: 1.8%
+
+Cleaned database saved to: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw_filtered.db
+[CMD] /opt/homebrew/opt/python@3.13/bin/python3.13 /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tools/enhance_python_deps.py /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/dependencies.stackgraphs_ast.db --profile stackgraphs
+======================================================================
+Python Dependency Enhancement Tool
+======================================================================
+Database: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/dependencies.stackgraphs_ast.db
+Source root: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test
+
+STEP 1: Adding Method->Field dependencies...
+======================================================================
+Import deps added: 232
+Found 79 classes to analyze...
+Found 257 methods/functions to analyze...
+Extend deps added (AST): 57
+  apply -> fx, fy, intensity, radius (Use)
+  close -> audio, reader (Use)
+  __init__ -> audio, duration, end, filename, fps, frame_function, mask, reader, rotation, size (Use)
+  apply -> RGB, preserve_luminosity (Use)
+  apply -> duration, side (Use)
+  __init__ -> audio_stream_index, bitrate, buffer, buffer_startframe, buffersize, codec, duration, filename, format, fps, infos, n_frames, nbytes, nchannels, proc (Use)
+  initialize -> pos, proc (Use)
+  skip_chunk -> pos, proc (Use)
+  read_chunk -> pos, proc (Use)
+  apply -> black, saturation (Use)
+  __init__ -> proc (Use)
+  show_frame -> proc (Use)
+  __init__ -> end_time, max_distance, min_distance, start_time, time_span (Use)
+  __str__ -> end_time, max_distance, min_distance, start_time (Use)
+  apply -> apply_to_mask, height, new_size, width (Use)
+  __init__ -> proc (Use)
+  write_frames -> proc (Use)
+  apply -> height, width, x1, x2, x_center, y1, y2, y_center (Use)
+  __init__ -> audio, duration, end, frame_function, has_constant_size, is_mask, layer_index, mask, pos, relative_pos, size (Use)
+  with_effects_on_subclip -> start (Use)
+  compose_on -> mask, pos, relative_pos, start (Use)
+  compose_mask -> pos, relative_pos, start (Use)
+  with_background_color -> duration, mask, size (Use)
+  to_mask -> is_mask (Use)
+  to_RGB -> is_mask (Use)
+  __add__ -> size (Use)
+  __init__ -> data, data_to_frame, fps (Use)
+  __init__ -> world (Use)
+  __init__ -> frame_function, img, mask, size (Use)
+  to_bitmap -> color_dict (Use)
+  w -> size (Use)
+  h -> size (Use)
+  n_frames -> duration (Use)
+  save_frame -> mask (Use)
+  write_videofile -> audio (Use)
+  write_images_sequence -> duration (Use)
+  show -> copy (Use)
+  preview -> audio (Use)
+  with_updated_frame_function -> frame_function, size (Use)
+  with_audio -> audio (Use)
+  with_mask -> has_constant_size, mask, size (Use)
+  without_mask -> mask (Use)
+  with_opacity -> mask (Use)
+  with_position -> pos, relative_pos (Use)
+  with_layer_index -> layer_index (Use)
+  to_ImageClip -> is_mask, mask (Use)
+  without_audio -> audio (Use)
+  image_transform -> frame_function, img, size (Use)
+  __init__ -> color, stroke_color, text (Use)
+  __init__ -> DEFAULT_COLOR_DICT, color_dict, fps, total_frames (Use)
+  apply -> apply_to (Use)
+  apply -> contrast, contrast_threshold, lum (Use)
+  apply -> abruptness, new_duration, soonness (Use)
+  __init__ -> mask (Use)
+  apply -> duration, side (Use)
+  __iter__ -> end_time, max_distance, min_distance, start_time (Use)
+  __eq__ -> end_time, max_distance, min_distance, start_time (Use)
+  apply -> duration_off, duration_on (Use)
+  apply -> gamma (Use)
+  apply -> factor (Use)
+  apply -> apply_to (Use)
+  apply -> left, right (Use)
+  apply -> factor, final_duration (Use)
+  __post_init__ -> duration (Use)
+  apply -> duration (Use)
+  __init__ -> duration, end, memoize, memoized_frame, memoized_t, start (Use)
+  __eq__ -> duration (Use)
+  __getitem__ -> duration (Use)
+  get_frame -> frame_function, memoize, memoized_frame, memoized_t (Use)
+  with_start -> duration, end, start (Use)
+  with_end -> duration, end, start (Use)
+  with_duration -> duration, end, start (Use)
+  with_updated_frame_function -> frame_function (Use)
+  with_is_mask -> is_mask (Use)
+  with_memoize -> memoize (Use)
+  subclipped -> duration (Use)
+  with_section_cut_out -> duration (Use)
+  iter_frames -> duration (Use)
+  is_playing -> end, start (Use)
+  add_margin -> bottom, color, left, margin_size, opacity, right, top (Use)
+  __init__ -> apply_to, h, w, x_speed, x_start, y_speed, y_start (Use)
+  apply -> apply_to, h, w, x_speed, x_start, y_speed, y_start (Use)
+  __init__ -> clip (Use)
+  expect_color_at -> clip (Use)
+  apply -> other_clip (Use)
+  __init__ -> duration, end, font, frame_function, make_textclip, mask, start, subtitles, textclips (Use)
+  in_subclip -> subtitles (Use)
+  __iter__ -> subtitles (Use)
+  __getitem__ -> subtitles (Use)
+  __str__ -> subtitles (Use)
+  match_expr -> subtitles (Use)
+  apply -> other_clip (Use)
+  apply -> duration, initial_color (Use)
+  __init__ -> left, right, ss, tt (Use)
+  __init__ -> tt, xx, yy (Use)
+  __call__ -> xi, yi (Use)
+  update_interpolators -> tt, xi, xx, yi, yy (Use)
+  __init__ -> duration, durations, end, fps, frame_function, images_starts, last_image, last_index, mask, size (Use)
+  frame_function -> is_mask, last_index (Use)
+  __init__ -> duration, end, fps, frame_function, nchannels (Use)
+  max_volume -> nchannels (Use)
+  __init__ -> array, duration, fps, frame_function, nchannels (Use)
+  __init__ -> clips, nchannels (Use)
+  frame_function -> clips, nchannels (Use)
+  iter_chunks -> duration, fps (Use)
+  to_soundarray -> duration, fps, nchannels (Use)
+  write_audiofile -> fps (Use)
+  starts -> clips (Use)
+  ends -> clips (Use)
+  apply -> angle, bg_color, center, expand, resample, translate, unit (Use)
+  __init__ -> audio, bg, bg_color, clips, created_bg, duration, end, fps, is_mask, mask, memoize_mask, precomputed, size (Use)
+  frame_function -> bg, is_mask, mask, memoize_mask, precomputed, size (Use)
+  playing_clips -> clips (Use)
+  close -> audio, bg, created_bg (Use)
+  __init__ -> functions_with_decorator (Use)
+  generic_visit -> functions_with_decorator (Use)
+  __init__ -> codec, ext, filename, logfile, proc (Use)
+  write_frames -> logfile, proc (Use)
+  apply -> color, stiffness, threshold (Use)
+  apply -> end_time, factor, start_time (Use)
+  apply -> padding_end (Use)
+  close -> reader (Use)
+  __init__ -> buffersize, duration, end, filename, fps, frame_function, nchannels, reader (Use)
+  __post_init__ -> end_time, start_time (Use)
+  apply -> d, n_frames (Use)
+  update -> fps (Use)
+  __init__ -> clip_t, fps, reset, win_strike (Use)
+  __init__ -> childs, data, head_line, indent_level, parent, raw_data, type (Use)
+  add_child -> childs (Use)
+  parse -> blocks (Use)
+  __init__ -> audio_stream, blocks, check_duration, data_stream, duration_tag_separator, filename, fps_source, infos, result, video_stream (Use)
+  _extract_block -> infos (Use)
+  apply -> duration, n (Use)
+  __init__ -> bitrate, bufsize, duration, ffmpeg_duration, filename, fps, infos, n_frames, pixel_format, proc, resize_algo (Use)
+  initialize -> infos, last_read, proc (Use)
+  skip_frames -> pos, proc (Use)
+  read_frame -> proc (Use)
+  apply -> duration (Use)
+  apply -> duration, final_color (Use)
+  __post_init__ -> duration (Use)
+  __init__ -> audio_codec, codec, ext, filename, logfile, proc (Use)
+  write_frame -> logfile, proc (Use)
+
+======================================================================
+Step 1 complete!
+  Methods analyzed: 257
+  New dependencies added: 596
+
+======================================================================
+STEP 2: Fixing Field parent_ids for clustering...
+======================================================================
+
+======================================================================
+FIXING FIELD PARENT IDs
+======================================================================
+Found 296 fields parented by Methods
+Updating to have Class as parent (and merging duplicates)...
+[INFO] Deduped 753 duplicate Use deps after field merge
+[OK] Updated 296 field entities (186 moved, 110 merged)
+[OK] 623 Method->Field dependencies now between siblings
+   (Deicide will now process these dependencies!)
+
+[INFO] Examples (moved fields):
+  - move: Field 'VideoFileClip.reader' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'VideoFileClip.duration' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'VideoFileClip.end' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'VideoFileClip.fps' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'VideoFileClip.size' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'VideoFileClip.rotation' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'VideoFileClip.filename' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'VideoFileClip.frame_function' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'VideoFileClip.mask' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'VideoFileClip.audio' from Method 'VideoFileClip.__init__' -> Class 'VideoFileClip'
+  - move: Field 'FFMPEG_AudioReader.filename' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.nbytes' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.fps' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.format' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.codec' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.nchannels' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.duration' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.bitrate' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.infos' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.proc' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.audio_stream_index' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.n_frames' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.buffersize' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.buffer' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+  - move: Field 'FFMPEG_AudioReader.buffer_startframe' from Method 'FFMPEG_AudioReader.__init__' -> Class 'FFMPEG_AudioReader'
+
+[INFO] Examples (merged duplicates):
+  - merge: Field 'HeadBlur.intensity' from Method 'HeadBlur.apply' -> canonical Field 'HeadBlur.intensity'
+  - merge: Field 'VideoFileClip.reader' from Method 'VideoFileClip.close' -> canonical Field 'VideoFileClip.reader'
+  - merge: Field 'VideoFileClip.frame_function' from Method 'VideoFileClip.__init__' -> canonical Field 'VideoFileClip.frame_function'
+  - merge: Field 'VideoFileClip.audio' from Method 'VideoFileClip.close' -> canonical Field 'VideoFileClip.audio'
+  - merge: Field 'FFMPEG_AudioReader.proc' from Method 'FFMPEG_AudioReader.initialize' -> canonical Field 'FFMPEG_AudioReader.proc'
+  - merge: Field 'FFMPEG_AudioReader.pos' from Method 'FFMPEG_AudioReader.skip_chunk' -> canonical Field 'FFMPEG_AudioReader.pos'
+  - merge: Field 'FFMPEG_AudioReader.pos' from Method 'FFMPEG_AudioReader.read_chunk' -> canonical Field 'FFMPEG_AudioReader.pos'
+  - merge: Field 'FFMPEG_AudioReader.pos' from Method 'FFMPEG_AudioReader.seek' -> canonical Field 'FFMPEG_AudioReader.pos'
+  - merge: Field 'FFMPEG_AudioReader.buffer_startframe' from Method 'FFMPEG_AudioReader.buffer_around' -> canonical Field 'FFMPEG_AudioReader.buffer_startframe'
+  - merge: Field 'FFMPEG_AudioReader.proc' from Method 'FFMPEG_AudioReader.close' -> canonical Field 'FFMPEG_AudioReader.proc'
+  - merge: Field 'FFMPEG_AudioReader.buffer' from Method 'FFMPEG_AudioReader.buffer_around' -> canonical Field 'FFMPEG_AudioReader.buffer'
+  - merge: Field 'FFMPEG_AudioReader.buffer' from Method 'FFMPEG_AudioReader.buffer_around' -> canonical Field 'FFMPEG_AudioReader.buffer'
+  - merge: Field 'FFMPEG_AudioReader.buffer' from Method 'FFMPEG_AudioReader.buffer_around' -> canonical Field 'FFMPEG_AudioReader.buffer'
+  - merge: Field 'FFPLAY_VideoPreviewer.proc' from Method 'FFPLAY_VideoPreviewer.close' -> canonical Field 'FFPLAY_VideoPreviewer.proc'
+  - merge: Field 'Resize.new_size' from Method 'Resize.apply' -> canonical Field 'Resize.new_size'
+  - merge: Field 'Resize.new_size' from Method 'Resize.apply' -> canonical Field 'Resize.new_size'
+  - merge: Field 'Resize.new_size' from Method 'Resize.apply' -> canonical Field 'Resize.new_size'
+  - merge: Field 'FFPLAY_AudioPreviewer.proc' from Method 'FFPLAY_AudioPreviewer.close' -> canonical Field 'FFPLAY_AudioPreviewer.proc'
+  - merge: Field 'Crop.x1' from Method 'Crop.apply' -> canonical Field 'Crop.x1'
+  - merge: Field 'Crop.y1' from Method 'Crop.apply' -> canonical Field 'Crop.y1'
+  - merge: Field 'Crop.x2' from Method 'Crop.apply' -> canonical Field 'Crop.x2'
+  - merge: Field 'Crop.y2' from Method 'Crop.apply' -> canonical Field 'Crop.y2'
+  - merge: Field 'Crop.x2' from Method 'Crop.apply' -> canonical Field 'Crop.x2'
+  - merge: Field 'Crop.y2' from Method 'Crop.apply' -> canonical Field 'Crop.y2'
+  - merge: Field 'Crop.x1' from Method 'Crop.apply' -> canonical Field 'Crop.x1'
+[INFO] Wrote report: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/enhance_python_deps.report.json
+
+======================================================================
+VERIFICATION RESULTS
+======================================================================
+
+Dependency Breakdown:
+Source          Target          Type       Count     
+----------------------------------------------------------------------
+Method          Field           Use        520       
+File            File            Import     304       
+Function        File            Call       261       
+File            File            Call       232       
+Method          Method          Call       176       
+Method          Field           Call       110       
+Field           Method          Use        89        
+Method          File            Call       86        
+Class           Class           Extend     59        
+Method          Class           Create     54        
+Function        Function        Call       53        
+Function        File            Use        40        
+Method          File            Use        32        
+File            Function        Import     27        
+Method          Method          Use        25        
+Field           Method          Call       17        
+Method          Function        Call       17        
+File            Class           Import     16        
+Class           File            Extend     15        
+Field           Field           Use        15        
+Field           File            Call       14        
+Field           File            Use        13        
+Method          Class           Use        12        
+File            Function        Use        10        
+File            Function        Call       9         
+Function        Class           Create     9         
+Field           Field           Call       8         
+Function        File            Import     8         
+Function        Method          Call       6         
+Field           Function        Use        5         
+File            Class           Create     4         
+Function        Function        Use        4         
+Class           File            Use        3         
+Field           Class           Create     3         
+Field           Class           Use        2         
+File            Field           Use        2         
+Function        Field           Use        2         
+Class           File            Call       1         
+File            File            Use        1         
+File            Method          Use        1         
+Function        Class           Use        1         
+Function        Method          Use        1         
+
+======================================================================
+COMPLETE SUCCESS!
+  - 520 Method->Field dependencies created
+  - 296 fields now siblings with methods
+  - Database ready for Deicide hierarchical clustering!
+======================================================================
+
+
+[OK] Main DB: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/dependencies.stackgraphs_ast.db
+[OK] Main DV8 DSM: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json
+
+[OK] Additional files in: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details
+  - File-level DV8: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.file.dv8-dsm-v3.json
+  - Raw DB (pre-enhancement): /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw.db
+  - Raw DV8 per-file deps: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/raw/dv8_deps
+  - Raw DV8 file-level: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw_file.dv8-dsm-v3.json
+  - Raw DV8 full: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw.dv8-dsm-v3.json
+  - Filtered raw DB (pre-enhancement): /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw_filtered.db
+  - Filtered raw DV8 per-file: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/raw_filtered/dv8_deps
+  - Filtered raw DV8 file-level: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw_filtered_file.dv8-dsm-v3.json
+  - Filtered raw DV8 full: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dependencies.stackgraphs_ast.raw_filtered.dv8-dsm-v3.json
+  - DV8 per-file deps: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/dv8_deps
+  - Per-file DBs: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/per_file_dbs
+  - Run summary: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/run_summary.json
+[OK] Terminal output: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/terminal_output.txt

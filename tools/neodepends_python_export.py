@@ -2245,9 +2245,11 @@ def main() -> int:
 
     def run_one(*, resolver: str, out_dir: Path, stackgraphs_python_mode_override: Optional[str] = None) -> Dict[str, Any]:
         out_dir.mkdir(parents=True, exist_ok=True)
+        details_dir = out_dir / "details"
+        details_dir.mkdir(parents=True, exist_ok=True)
         terminal_path = args.terminal_output
         if terminal_path is None:
-            terminal_path = out_dir / "terminal_output.txt"
+            terminal_path = details_dir / "terminal_output.txt"
         terminal_path = _resolve_path_arg(
             terminal_path, prefer_agent_root=True, must_exist=False, kind="Terminal output"
         )
@@ -2270,20 +2272,22 @@ def main() -> int:
             stackgraphs_mode = stackgraphs_python_mode_override or args.stackgraphs_python_mode
             option_tag = resolver if resolver == "depends" else f"stackgraphs_{_safe_tag(stackgraphs_mode)}"
 
-            # Output paths (always include resolver/mode in filenames to avoid ambiguity when
-            # comparing runs or sharing results).
+            # Main output files (keep in root for easy access)
             db_path = out_dir / f"dependencies.{option_tag}.db"
-            raw_db_path = out_dir / f"dependencies.{option_tag}.raw.db"
-            filtered_raw_db_path = out_dir / f"dependencies.{option_tag}.raw_filtered.db"
             full_dep_out_path = out_dir / f"dependencies.{option_tag}.filtered.dv8-dsm-v3.json"
-            raw_full_dep_out_path = out_dir / f"dependencies.{option_tag}.raw.dv8-dsm-v3.json"
-            raw_filtered_full_dep_out_path = out_dir / f"dependencies.{option_tag}.raw_filtered.dv8-dsm-v3.json"
-            file_level_out_path = out_dir / f"dependencies.{option_tag}.file.dv8-dsm-v3.json"
-            raw_file_level_out_path = out_dir / f"dependencies.{option_tag}.raw_file.dv8-dsm-v3.json"
-            raw_filtered_file_level_out_path = out_dir / f"dependencies.{option_tag}.raw_filtered_file.dv8-dsm-v3.json"
 
-            raw_out_dir = out_dir / "raw"
-            raw_filtered_out_dir = out_dir / "raw_filtered"
+            # File-level and intermediate files (move to details/ subdirectory)
+            file_level_out_path = details_dir / f"dependencies.{option_tag}.file.dv8-dsm-v3.json"
+            raw_db_path = details_dir / f"dependencies.{option_tag}.raw.db"
+            filtered_raw_db_path = details_dir / f"dependencies.{option_tag}.raw_filtered.db"
+            raw_full_dep_out_path = details_dir / f"dependencies.{option_tag}.raw.dv8-dsm-v3.json"
+            raw_filtered_full_dep_out_path = details_dir / f"dependencies.{option_tag}.raw_filtered.dv8-dsm-v3.json"
+            raw_file_level_out_path = details_dir / f"dependencies.{option_tag}.raw_file.dv8-dsm-v3.json"
+            raw_filtered_file_level_out_path = details_dir / f"dependencies.{option_tag}.raw_filtered_file.dv8-dsm-v3.json"
+
+            # Intermediate directories (move to details/ subdirectory)
+            raw_out_dir = details_dir / "raw"
+            raw_filtered_out_dir = details_dir / "raw_filtered"
 
             t_neodep = _run_and_tee([str(neodepends_bin), "--version"], logger=logger)
             _ = t_neodep  # keep elapsed for future if needed
@@ -2430,7 +2434,7 @@ def main() -> int:
             t3 = time.time()
             export_dv8_per_file(
                 db_path=db_path,
-                out_dir=out_dir,
+                out_dir=details_dir,
                 include_external_targets=include_external,
                 include_incoming_edges=include_incoming,
                 only_py=args.only_py,
@@ -2445,7 +2449,7 @@ def main() -> int:
             if file_level_dv8:
                 export_dv8_file_level(
                     db_path=db_path,
-                    out_dir=out_dir,
+                    out_dir=details_dir,
                     output_path=file_level_out_path,
                     focus_prefix=focus_prefix,
                     include_root_py=include_root_py,
@@ -2457,7 +2461,7 @@ def main() -> int:
             if full_dv8:
                 export_dv8_full_project(
                     db_path=db_path,
-                    out_dir=out_dir,
+                    out_dir=details_dir,
                     output_path=full_dep_out_path,
                     focus_prefix=focus_prefix,
                     include_root_py=include_root_py,
@@ -2473,7 +2477,7 @@ def main() -> int:
                 t4 = time.time()
                 export_per_file_dbs(
                     db_path=db_path,
-                    out_dir=out_dir,
+                    out_dir=details_dir,
                     include_incoming_edges=include_incoming,
                     only_py=args.only_py,
                     focus_prefix=focus_prefix,
@@ -2507,7 +2511,7 @@ def main() -> int:
                 "raw_full_dv8_dependency_root_path": str(raw_full_dep_out_path)
                 if raw_exported and full_dv8
                 else None,
-                "dv8_dir": str(out_dir / "dv8_deps"),
+                "dv8_dir": str(details_dir / "dv8_deps"),
                 "full_dv8_dependency_path": str(full_dep_out_path)
                 if full_dv8
                 else None,
@@ -2515,7 +2519,8 @@ def main() -> int:
                 "raw_filtered_full_dv8_dependency_root_path": str(raw_filtered_full_dep_out_path)
                 if raw_filtered_exported and full_dv8
                 else None,
-                "per_file_dbs_dir": str(out_dir / "per_file_dbs") if per_file else None,
+                "per_file_dbs_dir": str(details_dir / "per_file_dbs") if per_file else None,
+                "details_dir": str(details_dir),
                 "timings_sec": {
                     "neodepends": elapsed_neodepends,
                     "raw_dv8_export": elapsed_raw_export,
@@ -2524,7 +2529,7 @@ def main() -> int:
                     "per_file_db_export": elapsed_per_file,
                 },
                 "db_summary": _summarize_db(db_path),
-                "dv8_summary": _summarize_dv8_dir(out_dir / "dv8_deps"),
+                "dv8_summary": _summarize_dv8_dir(details_dir / "dv8_deps"),
                 "raw_db_summary": _summarize_db(raw_db_path) if raw_db_path.exists() else None,
                 "raw_dv8_summary": _summarize_dv8_dir(raw_out_dir / "dv8_deps") if raw_exported else None,
                 "filtered_raw_db_summary": _summarize_db(filtered_raw_db_path) if filtered_raw_db_path.exists() else None,
@@ -2532,35 +2537,38 @@ def main() -> int:
                 if raw_filtered_exported
                 else None,
             }
-            (out_dir / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+            (details_dir / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
             logger.line("")
-            logger.line(f"[OK] DB: {db_path}")
-            if raw_db_path.exists():
-                logger.line(f"[OK] Raw DB (pre-enhancement): {raw_db_path}")
-                if raw_exported:
-                    logger.line(f"[OK] Raw DV8 per-file deps: {raw_out_dir / 'dv8_deps'}")
-                    if file_level_dv8:
-                        logger.line(f"[OK] Raw DV8 file-level deps: {raw_file_level_out_path}")
-                    if full_dv8:
-                        logger.line(f"[OK] Raw DV8 full deps: {raw_full_dep_out_path}")
-            if filtered_raw_db_path.exists():
-                logger.line(f"[OK] Filtered raw DB (pre-enhancement): {filtered_raw_db_path}")
-                if raw_filtered_exported:
-                    logger.line(f"[OK] Filtered raw DV8 per-file deps: {raw_filtered_out_dir / 'dv8_deps'}")
-                    if file_level_dv8:
-                        logger.line(f"[OK] Filtered raw DV8 file-level deps: {raw_filtered_file_level_out_path}")
-                    if full_dv8:
-                        logger.line(f"[OK] Filtered raw DV8 full deps: {raw_filtered_full_dep_out_path}")
-            logger.line(f"[OK] DV8 per-file deps: {out_dir / 'dv8_deps'}")
-            if file_level_dv8:
-                logger.line(f"[OK] DV8 file-level deps: {file_level_out_path}")
+            logger.line(f"[OK] Main DB: {db_path}")
             if full_dv8:
-                logger.line(f"[OK] DV8 full deps: {full_dep_out_path}")
+                logger.line(f"[OK] Main DV8 DSM: {full_dep_out_path}")
+            logger.line("")
+            logger.line(f"[OK] Additional files in: {details_dir}")
+            if file_level_dv8:
+                logger.line(f"  - File-level DV8: {file_level_out_path}")
+            if raw_db_path.exists():
+                logger.line(f"  - Raw DB (pre-enhancement): {raw_db_path}")
+                if raw_exported:
+                    logger.line(f"  - Raw DV8 per-file deps: {raw_out_dir / 'dv8_deps'}")
+                    if file_level_dv8:
+                        logger.line(f"  - Raw DV8 file-level: {raw_file_level_out_path}")
+                    if full_dv8:
+                        logger.line(f"  - Raw DV8 full: {raw_full_dep_out_path}")
+            if filtered_raw_db_path.exists():
+                logger.line(f"  - Filtered raw DB (pre-enhancement): {filtered_raw_db_path}")
+                if raw_filtered_exported:
+                    logger.line(f"  - Filtered raw DV8 per-file: {raw_filtered_out_dir / 'dv8_deps'}")
+                    if file_level_dv8:
+                        logger.line(f"  - Filtered raw DV8 file-level: {raw_filtered_file_level_out_path}")
+                    if full_dv8:
+                        logger.line(f"  - Filtered raw DV8 full: {raw_filtered_full_dep_out_path}")
+            logger.line(f"  - DV8 per-file deps: {details_dir / 'dv8_deps'}")
             if per_file:
-                logger.line(f"[OK] Per-file DBs: {out_dir / 'per_file_dbs'}")
+                logger.line(f"  - Per-file DBs: {details_dir / 'per_file_dbs'}")
+            logger.line(f"  - Run summary: {details_dir / 'run_summary.json'}")
             if not args.no_terminal_output:
-                logger.line(f"[OK] Terminal output saved: {terminal_path}")
+                logger.line(f"[OK] Terminal output: {terminal_path}")
 
             return summary
         finally:

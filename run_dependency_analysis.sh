@@ -57,21 +57,34 @@ if [ "$LANGUAGE" != "python" ] && [ "$LANGUAGE" != "java" ]; then
 fi
 
 # Prompt for model/resolver (accept shortcuts: d/D/depends or s/S/stackgraphs)
-read -p "Enter model (d/D/depends or s/S/stackgraphs): " MODEL
-MODEL=$(echo "$MODEL" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
-# Normalize shortcuts to full names
-case "$MODEL" in
-    d|depends)
-        MODEL="depends"
-        ;;
-    s|stackgraphs)
-        MODEL="stackgraphs"
-        ;;
-    *)
-        echo "Error: Model must be 'd', 'depends', 's', or 'stackgraphs'"
-        exit 1
-        ;;
-esac
+# COMMENTED OUT: Manual resolver selection (kept for future testing)
+# read -p "Enter model (d/D/depends or s/S/stackgraphs): " MODEL
+# MODEL=$(echo "$MODEL" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
+# # Normalize shortcuts to full names
+# case "$MODEL" in
+#     d|depends)
+#         MODEL="depends"
+#         ;;
+#     s|stackgraphs)
+#         MODEL="stackgraphs"
+#         ;;
+#     *)
+#         echo "Error: Model must be 'd', 'depends', 's', or 'stackgraphs'"
+#         exit 1
+#         ;;
+# esac
+
+# Auto-select resolver based on language
+if [ "$LANGUAGE" == "python" ]; then
+    MODEL="stackgraphs"
+    echo "Auto-selected resolver: stackgraphs (for Python)"
+elif [ "$LANGUAGE" == "java" ]; then
+    MODEL="depends"
+    echo "Auto-selected resolver: depends (for Java)"
+else
+    echo "Error: Unsupported language: $LANGUAGE"
+    exit 1
+fi
 
 # Build the command
 CMD="python3 tools/neodepends_python_export.py"

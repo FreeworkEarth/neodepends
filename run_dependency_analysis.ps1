@@ -48,21 +48,34 @@ if ($Language -ne "python" -and $Language -ne "java") {
 }
 
 # Prompt for model/resolver (accept shortcuts: d/D/depends or s/S/stackgraphs)
-$Model = Read-Host "Enter model (d/D/depends or s/S/stackgraphs)"
-$Model = $Model.ToLower().Trim()
+# COMMENTED OUT: Manual resolver selection (kept for future testing)
+# $Model = Read-Host "Enter model (d/D/depends or s/S/stackgraphs)"
+# $Model = $Model.ToLower().Trim()
+#
+# # Normalize shortcuts to full names
+# switch ($Model) {
+#     { $_ -in @("d", "depends") } {
+#         $Model = "depends"
+#     }
+#     { $_ -in @("s", "stackgraphs") } {
+#         $Model = "stackgraphs"
+#     }
+#     default {
+#         Write-Host "Error: Model must be 'd', 'depends', 's', or 'stackgraphs'" -ForegroundColor Red
+#         exit 1
+#     }
+# }
 
-# Normalize shortcuts to full names
-switch ($Model) {
-    { $_ -in @("d", "depends") } {
-        $Model = "depends"
-    }
-    { $_ -in @("s", "stackgraphs") } {
-        $Model = "stackgraphs"
-    }
-    default {
-        Write-Host "Error: Model must be 'd', 'depends', 's', or 'stackgraphs'" -ForegroundColor Red
-        exit 1
-    }
+# Auto-select resolver based on language
+if ($Language -eq "python") {
+    $Model = "stackgraphs"
+    Write-Host "Auto-selected resolver: stackgraphs (for Python)"
+} elseif ($Language -eq "java") {
+    $Model = "depends"
+    Write-Host "Auto-selected resolver: depends (for Java)"
+} else {
+    Write-Host "Error: Unsupported language: $Language" -ForegroundColor Red
+    exit 1
 }
 
 # Build the command arguments

@@ -17,32 +17,61 @@ Download the latest release artifact from this fork and unzip it. The bundle inc
 - `examples/` (toy projects)
 
 
-## QuickStart Release Bundle: Automated analysis with Interactive Script
+## QuickStart Release Bundle: One-Command Setup & Analysis
 
-For a guided analysis experience, use the interactive script that prompts you for all required settings:
+### 1. First-Time Setup (One-Time Only)
 
-**macOS / Linux:**
+Run the automated setup script to check dependencies:
 
 ```bash
-cd /path/to/neodepends
+python3 setup.py
+```
+
+This script will:
+
+- Verify Python version (3.7+ required)
+- Check for NeoDepends binary
+- Check for Java (optional, needed for Java analysis)
+- Install any required Python packages
+- Provide clear next steps
+
+### 2. Run Dependency Analysis (Cross-Platform)
+
+**Recommended for all platforms** - Pure Python script that works everywhere:
+
+```bash
+python3 run_dependency_analysis.py
+```
+
+**Alternative platform-specific scripts:**
+
+**macOS / Linux (Bash):**
+
+```bash
 chmod +x run_dependency_analysis.sh
 ./run_dependency_analysis.sh
 ```
 
-**Windows:**
+**Windows (PowerShell):**
 
 ```powershell
-cd C:\path\to\neodepends
 .\run_dependency_analysis.ps1
 ```
+
+**Windows (Git Bash)** - Requires [Git Bash](https://git-scm.com/download/win):
+
+```bash
+bash run_dependency_analysis.sh
+```
+
+All scripts provide identical functionality. The Python version is recommended for maximum compatibility.
 
 The script will prompt you for:
 
 - **NeoDepends binary path** - Press Enter to use `./neodepends` (default) or provide a custom path
 - **Input repository path** - Path to your project directory (tab completion enabled)
 - **Output directory path** - Where to save results (tab completion enabled)
-- **Language** - `python` or `java`
-- **Model/Resolver** - `d` or `s` (shortcuts for `depends` or `stackgraphs`)
+- **Language** - `python` or `java` (resolver auto-selected based on language)
 
 The script automatically applies recommended settings:
 
@@ -387,7 +416,7 @@ See `examples/README.md` for bundled toy projects and runnable commands.
 
 ## Contributors
 
-This Python fork (PyFork) was developed and maintained by:
+This fork enabling dependency extraction with python was developed and maintained by:
 
 - **Christoph Haring** (<charing@hawaii.edu>) - Python export pipeline, DV8 integration, single-file analysis
 - **Bao Vuong** (<baovg.a1.k2023@gmail.com>) - Python tooling and testing
