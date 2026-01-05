@@ -23,8 +23,16 @@ Download the latest release artifact from this fork and unzip it. The bundle inc
 
 Run the automated setup script to check dependencies:
 
+**macOS / Linux:**
+
 ```bash
 python3 setup.py
+```
+
+**Windows:**
+
+```powershell
+py -3 setup.py
 ```
 
 This script will:
