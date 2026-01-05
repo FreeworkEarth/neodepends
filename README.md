@@ -87,7 +87,7 @@ Enter neodepends binary path [default: ./neodepends]:
 Enter input repository path: examples/TrainTicketSystem_TOY_PYTHON_FIRST/tts
 Enter output directory path: ./test-package
 Enter language (python or java): python
-Enter model (d/D/depends or s/S/stackgraphs): s
+Auto-selected resolver: stackgraphs (for Python)
 ...
 ```
 
@@ -122,131 +122,70 @@ This will analyze 4 example TrainTicketSystem projects (2 Python, 2 Java) and sa
 - `RESULTS_QuickStart_Examples/java_toy_second/dependencies.dv8-dsm-v3.json`
 
 ## Run on Your Own Projects
- 
-### Python Projects
 
-**Best results:** Use `--resolver stackgraphs` with `--stackgraphs-python-mode ast` for accurate Python dependency extraction.
+### Recommended: Use Config Presets (Simple)
 
-**macOS / Linux:**
+The easiest way to run NeoDepends is using `--langs` flag with `--config default`:
+
+**Python Projects:**
 
 ```bash
 cd /path/to/neodepends
 python3 tools/neodepends_python_export.py \
-  --neodepends-bin ./neodepends \
   --input /path/to/your/python/package \
   --output-dir /path/to/output \
-  --resolver stackgraphs \
-  --stackgraphs-python-mode ast \
-  --dv8-hierarchy structured \
-  --filter-architecture \
-  --filter-stackgraphs-false-positives
+  --langs python \
+  --config default
 ```
 
-**Windows:**
-
-```powershell
-cd C:\path\to\neodepends
-py -3 tools\neodepends_python_export.py `
-  --neodepends-bin .\neodepends.exe `
-  --input C:\path\to\your\python\package `
-  --output-dir C:\path\to\output `
-  --resolver stackgraphs `
-  --stackgraphs-python-mode ast `
-  --dv8-hierarchy structured `
-  --filter-architecture `
-  --filter-stackgraphs-false-positives
-```
-
-**Note:** On Windows, you can optionally add the neodepends directory to your PATH environment variable to run commands from anywhere. Otherwise, make sure to `cd` to the neodepends directory first.
-
-### Single Python File Analysis
-
-You can analyze individual Python files instead of entire directories. This is useful for large single-file scripts or when you want to focus on a specific module.
-
-**macOS / Linux:**
+**Single Python File:**
 
 ```bash
-cd /path/to/neodepends
 python3 tools/neodepends_python_export.py \
-  --neodepends-bin ./neodepends \
   --input /path/to/your/file.py \
   --output-dir /path/to/output \
-  --resolver stackgraphs \
-  --stackgraphs-python-mode ast \
-  --dv8-hierarchy structured \
-  --filter-architecture \
-  --filter-stackgraphs-false-positives
+  --langs python \
+  --config default
 ```
 
-**Windows:**
-
-```powershell
-cd C:\path\to\neodepends
-py -3 tools\neodepends_python_export.py `
-  --neodepends-bin .\neodepends.exe `
-  --input C:\path\to\your\file.py `
-  --output-dir C:\path\to\output `
-  --resolver stackgraphs `
-  --stackgraphs-python-mode ast `
-  --dv8-hierarchy structured `
-  --filter-architecture `
-  --filter-stackgraphs-false-positives
-```
-
-**Note:** Single-file analysis will only show dependencies visible within that file. For complete dependency graphs including imports from other modules in your project, analyze the entire package directory instead.
-
-
-### Java Projects
-
-**Best results:** Use `--depends` with `--depends-jar ./artifacts/depends.jar` for accurate Java dependency extraction.
-
-**macOS / Linux:**
+**Java Projects:**
 
 ```bash
-cd /path/to/neodepends
-
-# Step 1: Extract dependencies
-./neodepends \
+python3 tools/neodepends_python_export.py \
   --input /path/to/java/src \
-  --output /path/to/output/dependencies.db \
-  --format sqlite \
-  --resources entities,deps,contents \
+  --output-dir /path/to/output \
   --langs java \
-  --depends \
-  --depends-jar ./artifacts/depends.jar \
-  --force
-
-# Step 2: Export to DV8 format
-python3 tools/export_dv8_from_neodepends_db.py \
-  --db /path/to/output/dependencies.db \
-  --out /path/to/output/dependencies.dv8-dsm-v3.json \
-  --name "My Java Project"
+  --config default
 ```
 
-**Windows:**
+**What `--langs <language> --config default` does:**
 
-```powershell
-cd C:\path\to\neodepends
+- Uses the `--langs` flag to determine which language preset to apply
+- Applies best-practice resolver (stackgraphs for Python, depends for Java)
+- Enables structured DV8 hierarchy for easy navigation
+- Enables architecture filtering for cleaner results
+- Enables false positive filtering (Python only)
 
-# Step 1: Extract dependencies
-.\neodepends.exe `
-  --input C:\path\to\java\src `
-  --output C:\path\to\output\dependencies.db `
-  --format sqlite `
-  --resources entities,deps,contents `
-  --langs java `
-  --depends `
-  --depends-jar .\artifacts\depends.jar `
-  --force
+**Automatic language detection:**
 
-# Step 2: Export to DV8 format
-py -3 tools\export_dv8_from_neodepends_db.py `
-  --db C:\path\to\output\dependencies.db `
-  --out C:\path\to\output\dependencies.dv8-dsm-v3.json `
-  --name "My Java Project"
+If you want automatic language detection from file extensions, use `--config automatic` (no `--langs` needed):
+
+```bash
+python3 tools/neodepends_python_export.py \
+  --input /path/to/your/code \
+  --output-dir /path/to/output \
+  --config automatic
 ```
 
-**Note:** Java analysis requires a Java runtime to be installed on your system.
+**Windows Users:** Replace `python3` with `py -3` and use backslashes (`\`) in paths.
+
+**All available presets:**
+
+- `--langs <language> --config default` - Use language flag to apply best practices (recommended)
+- `--config automatic` - Auto-detect language from file extensions
+- `--langs python --config python` - Explicitly use Python best practices
+- `--langs java --config java` - Explicitly use Java best practices
+- `--config manual` - Specify all options yourself (advanced, default)
 
 
 ---

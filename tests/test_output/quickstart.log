@@ -4,7 +4,7 @@ Output directory: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/
 Using NeoDepends binary: ./target/release/neodepends
 
 === 1/4: Python Example - TrainTicketSystem TOY 1 ===
-timestamp: 2025-12-23T19:51:30.419594
+timestamp: 2025-12-23T23:51:35.011515
 resolver: stackgraphs
 project_root: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_FIRST
 focus_path: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_FIRST/tts
@@ -14,12 +14,12 @@ output: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST
 [CMD] /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/target/release/neodepends --version
 neodepends 0.0.12
 [CMD] /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/target/release/neodepends --force --input=/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_FIRST --output=/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_first/dependencies.stackgraphs_ast.db --format=sqlite --resources=entities,deps,contents --langs=python --stackgraphs --stackgraphs-python-mode=ast
-[2025-12-24T05:51:30Z WARN  neodepends::filesystem] No git repository found. Opening in disk-only mode.
-[2025-12-24T05:51:30Z INFO  neodepends::filesystem] Project opened at: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_FIRST
-[2025-12-24T05:51:30Z INFO  neodepends] Extracting and writing entities...
-[2025-12-24T05:51:30Z INFO  neodepends] Extracting and writing deps...
-[2025-12-24T05:51:30Z INFO  neodepends] Extracting and writing contents...
-[2025-12-24T05:51:30Z INFO  neodepends] Finished in 409ms
+[2025-12-24T09:51:35Z WARN  neodepends::filesystem] No git repository found. Opening in disk-only mode.
+[2025-12-24T09:51:35Z INFO  neodepends::filesystem] Project opened at: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_FIRST
+[2025-12-24T09:51:35Z INFO  neodepends] Extracting and writing entities...
+[2025-12-24T09:51:35Z INFO  neodepends] Extracting and writing deps...
+[2025-12-24T09:51:35Z INFO  neodepends] Extracting and writing contents...
+[2025-12-24T09:51:35Z INFO  neodepends] Finished in 422ms
 [CMD] /opt/homebrew/opt/python@3.13/bin/python3.13 /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tools/filter_false_positives.py /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_first/details/dependencies.stackgraphs_ast.raw.db /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_first/details/dependencies.stackgraphs_ast.raw_filtered.db
 Copying database from /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_first/details/dependencies.stackgraphs_ast.raw.db to /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_first/details/dependencies.stackgraphs_ast.raw_filtered.db...
 Analyzing dependencies...
@@ -31,11 +31,11 @@ False Positives Breakdown:
   sibling_method: 35
 
 Examples of false positives being removed:
-  1. [add_ticket (Method)] -> [book_ticket (Method)] at row 28 (reason: sibling_method)
-  2. [display_info (Method)] -> [display_ticket (Method)] at row 46 (reason: sibling_method)
-  3. [available_seats (Method)] -> [get_available_seats (Method)] at row 38 (reason: sibling_method)
-  4. [get_name (Method)] -> [set_name (Method)] at row 16 (reason: sibling_method)
-  5. [get_name (Method)] -> [__init__ (Method)] at row 16 (reason: sibling_method)
+  1. [get_employee_id (Method)] -> [__init__ (Method)] at row 21 (reason: sibling_method)
+  2. [get_salary (Method)] -> [__init__ (Method)] at row 24 (reason: sibling_method)
+  3. [get_department (Method)] -> [__init__ (Method)] at row 27 (reason: sibling_method)
+  4. [get_station_code (Method)] -> [__init__ (Method)] at row 44 (reason: sibling_method)
+  5. [get_name (Method)] -> [__init__ (Method)] at row 47 (reason: sibling_method)
   ... and 30 more
 
 Removing false positives from database...
@@ -61,32 +61,14 @@ Import deps added: 3
 Found 17 classes to analyze...
 Found 114 methods/functions to analyze...
 Extend deps added (AST): 2
-  __init__ -> department, employee_id, salary (Use)
-  book_seat -> booked_seats (Use)
-  __init__ -> agents, available_trains, city, name, station_code (Use)
-  add_agent -> agents (Use)
-  __init__ -> booked_seats, route, total_seats, train_name, train_number, type (Use)
-  set_route -> route (Use)
-  set_phone -> phone (Use)
-  display_info -> destination, origin (Use)
+  __init__ -> email, id, name, phone (Use)
   set_name -> name (Use)
   set_email -> email (Use)
-  add_intermediate_stop -> intermediate_stops (Use)
-  __init__ -> email, id, name, phone (Use)
-  display_ticket -> booking_time, route, train (Use)
   __init__ -> assigned_station, tickets_processed (Use)
   set_assigned_station -> assigned_station (Use)
   issue_ticket -> tickets_processed (Use)
   cancel_ticket -> tickets_processed (Use)
-  book_ticket -> booked_tickets, loyalty_points (Use)
-  cancel_ticket -> loyalty_points (Use)
-  __init__ -> booked_tickets, loyalty_points, passport_number (Use)
-  __init__ -> booking_time, passenger, price, route, seat_number, status, ticket_id, train (Use)
-  cancel -> status, train (Use)
-  complete -> status (Use)
-  set_managed_station -> managed_station (Use)
-  add_train_schedule -> scheduled_trains (Use)
-  __init__ -> managed_station, scheduled_trains (Use)
+  display_ticket -> booking_time, route, train (Use)
   generate_station_report -> booking_system, reports (Use)
   generate_train_report -> booking_system, reports (Use)
   generate_passenger_report -> booking_system, reports (Use)
@@ -116,8 +98,26 @@ Extend deps added (AST): 2
   find_train -> trains (Use)
   add_route -> routes (Use)
   find_routes -> routes (Use)
+  __init__ -> department, employee_id, salary (Use)
+  book_seat -> booked_seats (Use)
+  __init__ -> booked_seats, route, total_seats, train_name, train_number, type (Use)
+  set_route -> route (Use)
   __init__ -> _initialized, passengers, routes, staff, stations, trains (Use)
+  book_ticket -> booked_tickets, loyalty_points (Use)
+  cancel_ticket -> loyalty_points (Use)
+  set_managed_station -> managed_station (Use)
+  add_train_schedule -> scheduled_trains (Use)
+  display_info -> destination, origin (Use)
+  __init__ -> booked_tickets, loyalty_points, passport_number (Use)
+  __init__ -> agents, available_trains, city, name, station_code (Use)
+  add_agent -> agents (Use)
+  __init__ -> booking_time, passenger, price, route, seat_number, status, ticket_id, train (Use)
+  cancel -> status, train (Use)
+  complete -> status (Use)
+  __init__ -> managed_station, scheduled_trains (Use)
   __init__ -> base_fare, destination, distance, intermediate_stops, origin, route_id (Use)
+  add_intermediate_stop -> intermediate_stops (Use)
+  set_phone -> phone (Use)
 
 ======================================================================
 Step 1 complete!
@@ -139,48 +139,48 @@ Updating to have Class as parent (and merging duplicates)...
    (Deicide will now process these dependencies!)
 
 [INFO] Examples (moved fields):
-  - move: Field 'Train.train_number' from Method 'Train.__init__' -> Class 'Train'
-  - move: Field 'Train.train_name' from Method 'Train.__init__' -> Class 'Train'
-  - move: Field 'Train.total_seats' from Method 'Train.__init__' -> Class 'Train'
-  - move: Field 'Train.booked_seats' from Method 'Train.__init__' -> Class 'Train'
-  - move: Field 'Train.route' from Method 'Train.__init__' -> Class 'Train'
-  - move: Field 'Train.type' from Method 'Train.__init__' -> Class 'Train'
-  - move: Field 'TrainStation.station_code' from Method 'TrainStation.__init__' -> Class 'TrainStation'
-  - move: Field 'TrainStation.name' from Method 'TrainStation.__init__' -> Class 'TrainStation'
-  - move: Field 'TrainStation.city' from Method 'TrainStation.__init__' -> Class 'TrainStation'
-  - move: Field 'TrainStation.agents' from Method 'TrainStation.__init__' -> Class 'TrainStation'
-  - move: Field 'TrainStation.available_trains' from Method 'TrainStation.__init__' -> Class 'TrainStation'
+  - move: Field 'TicketAgent.tickets_processed' from Method 'TicketAgent.__init__' -> Class 'TicketAgent'
+  - move: Field 'TicketAgent.assigned_station' from Method 'TicketAgent.__init__' -> Class 'TicketAgent'
+  - move: Field 'Person.name' from Method 'Person.__init__' -> Class 'Person'
+  - move: Field 'Person.id' from Method 'Person.__init__' -> Class 'Person'
   - move: Field 'Staff.employee_id' from Method 'Staff.__init__' -> Class 'Staff'
   - move: Field 'Staff.salary' from Method 'Staff.__init__' -> Class 'Staff'
   - move: Field 'Staff.department' from Method 'Staff.__init__' -> Class 'Staff'
-  - move: Field 'Route.origin' from Method 'Route.__init__' -> Class 'Route'
-  - move: Field 'Route.destination' from Method 'Route.__init__' -> Class 'Route'
-  - move: Field 'Route.intermediate_stops' from Method 'Route.__init__' -> Class 'Route'
-  - move: Field 'Route.distance' from Method 'Route.__init__' -> Class 'Route'
-  - move: Field 'Route.base_fare' from Method 'Route.__init__' -> Class 'Route'
-  - move: Field 'Person.name' from Method 'Person.__init__' -> Class 'Person'
-  - move: Field 'Person.id' from Method 'Person.__init__' -> Class 'Person'
-  - move: Field 'Person.email' from Method 'Person.__init__' -> Class 'Person'
-  - move: Field 'Person.phone' from Method 'Person.__init__' -> Class 'Person'
-  - move: Field 'Route.route_id' from Method 'Route.__init__' -> Class 'Route'
+  - move: Field 'StationManager.managed_station' from Method 'StationManager.__init__' -> Class 'StationManager'
+  - move: Field 'StationManager.scheduled_trains' from Method 'StationManager.__init__' -> Class 'StationManager'
   - move: Field 'Ticket.ticket_id' from Method 'Ticket.__init__' -> Class 'Ticket'
+  - move: Field 'Ticket.passenger' from Method 'Ticket.__init__' -> Class 'Ticket'
+  - move: Field 'Ticket.route' from Method 'Ticket.__init__' -> Class 'Ticket'
+  - move: Field 'Ticket.train' from Method 'Ticket.__init__' -> Class 'Ticket'
+  - move: Field 'Ticket.seat_number' from Method 'Ticket.__init__' -> Class 'Ticket'
+  - move: Field 'Ticket.price' from Method 'Ticket.__init__' -> Class 'Ticket'
+  - move: Field 'Ticket.booking_time' from Method 'Ticket.__init__' -> Class 'Ticket'
+  - move: Field 'Ticket.status' from Method 'Ticket.__init__' -> Class 'Ticket'
+  - move: Field 'TicketBookingSystem._initialized' from Method 'TicketBookingSystem.__init__' -> Class 'TicketBookingSystem'
+  - move: Field 'TicketBookingSystem.stations' from Method 'TicketBookingSystem.__init__' -> Class 'TicketBookingSystem'
+  - move: Field 'TicketBookingSystem.trains' from Method 'TicketBookingSystem.__init__' -> Class 'TicketBookingSystem'
+  - move: Field 'TicketBookingSystem.routes' from Method 'TicketBookingSystem.__init__' -> Class 'TicketBookingSystem'
+  - move: Field 'TicketBookingSystem.passengers' from Method 'TicketBookingSystem.__init__' -> Class 'TicketBookingSystem'
+  - move: Field 'TicketBookingSystem.staff' from Method 'TicketBookingSystem.__init__' -> Class 'TicketBookingSystem'
+  - move: Field 'ReportingSystem.booking_system' from Method 'ReportingSystem.__init__' -> Class 'ReportingSystem'
+  - move: Field 'ReportingSystem.reports' from Method 'ReportingSystem.__init__' -> Class 'ReportingSystem'
 
 [INFO] Examples (merged duplicates):
-  - merge: Field 'Train.route' from Method 'Train.set_route' -> canonical Field 'Train.route'
-  - merge: Field 'Person.name' from Method 'Person.set_name' -> canonical Field 'Person.name'
-  - merge: Field 'Person.email' from Method 'Person.set_email' -> canonical Field 'Person.email'
-  - merge: Field 'Person.phone' from Method 'Person.set_phone' -> canonical Field 'Person.phone'
-  - merge: Field 'Ticket.status' from Method 'Ticket.cancel' -> canonical Field 'Ticket.status'
-  - merge: Field 'Ticket.status' from Method 'Ticket.complete' -> canonical Field 'Ticket.status'
-  - merge: Field 'Passenger.loyalty_points' from Method 'Passenger.book_ticket' -> canonical Field 'Passenger.loyalty_points'
-  - merge: Field 'Passenger.loyalty_points' from Method 'Passenger.cancel_ticket' -> canonical Field 'Passenger.loyalty_points'
   - merge: Field 'TicketAgent.assigned_station' from Method 'TicketAgent.set_assigned_station' -> canonical Field 'TicketAgent.assigned_station'
   - merge: Field 'TicketAgent.tickets_processed' from Method 'TicketAgent.issue_ticket' -> canonical Field 'TicketAgent.tickets_processed'
   - merge: Field 'TicketAgent.tickets_processed' from Method 'TicketAgent.cancel_ticket' -> canonical Field 'TicketAgent.tickets_processed'
   - merge: Field 'StationManager.managed_station' from Method 'StationManager.set_managed_station' -> canonical Field 'StationManager.managed_station'
+  - merge: Field 'Ticket.status' from Method 'Ticket.cancel' -> canonical Field 'Ticket.status'
+  - merge: Field 'Ticket.status' from Method 'Ticket.complete' -> canonical Field 'Ticket.status'
   - merge: Field 'ReportingSystem.cached_stats' from Method 'ReportingSystem.get_station_traffic' -> canonical Field 'ReportingSystem.cached_stats'
   - merge: Field 'ReportingSystem.cached_stats' from Method 'ReportingSystem.clear_cache' -> canonical Field 'ReportingSystem.cached_stats'
   - merge: Field 'TicketBookingSystem._instance' from Method 'TicketBookingSystem.__new__' -> canonical Field 'TicketBookingSystem._instance'
+  - merge: Field 'Person.name' from Method 'Person.set_name' -> canonical Field 'Person.name'
+  - merge: Field 'Train.route' from Method 'Train.set_route' -> canonical Field 'Train.route'
+  - merge: Field 'Passenger.loyalty_points' from Method 'Passenger.book_ticket' -> canonical Field 'Passenger.loyalty_points'
+  - merge: Field 'Passenger.loyalty_points' from Method 'Passenger.cancel_ticket' -> canonical Field 'Passenger.loyalty_points'
+  - merge: Field 'Person.phone' from Method 'Person.__init__' -> canonical Field 'Person.phone'
+  - merge: Field 'Person.email' from Method 'Person.set_email' -> canonical Field 'Person.email'
 [INFO] Wrote report: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_first/details/enhance_python_deps.report.json
 
 ======================================================================
@@ -246,7 +246,7 @@ COMPLETE SUCCESS!
 ✓ Python TOY 1 complete
 
 === 2/4: Python Example - TrainTicketSystem TOY 2 ===
-timestamp: 2025-12-23T19:51:31.141505
+timestamp: 2025-12-23T23:51:35.739234
 resolver: stackgraphs
 project_root: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_SECOND
 focus_path: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_SECOND/tts
@@ -256,12 +256,12 @@ output: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST
 [CMD] /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/target/release/neodepends --version
 neodepends 0.0.12
 [CMD] /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/target/release/neodepends --force --input=/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_SECOND --output=/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_second/dependencies.stackgraphs_ast.db --format=sqlite --resources=entities,deps,contents --langs=python --stackgraphs --stackgraphs-python-mode=ast
-[2025-12-24T05:51:31Z WARN  neodepends::filesystem] No git repository found. Opening in disk-only mode.
-[2025-12-24T05:51:31Z INFO  neodepends::filesystem] Project opened at: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_SECOND
-[2025-12-24T05:51:31Z INFO  neodepends] Extracting and writing entities...
-[2025-12-24T05:51:31Z INFO  neodepends] Extracting and writing deps...
-[2025-12-24T05:51:31Z INFO  neodepends] Extracting and writing contents...
-[2025-12-24T05:51:31Z INFO  neodepends] Finished in 400ms
+[2025-12-24T09:51:35Z WARN  neodepends::filesystem] No git repository found. Opening in disk-only mode.
+[2025-12-24T09:51:35Z INFO  neodepends::filesystem] Project opened at: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_PYTHON_SECOND
+[2025-12-24T09:51:35Z INFO  neodepends] Extracting and writing entities...
+[2025-12-24T09:51:35Z INFO  neodepends] Extracting and writing deps...
+[2025-12-24T09:51:36Z INFO  neodepends] Extracting and writing contents...
+[2025-12-24T09:51:36Z INFO  neodepends] Finished in 392ms
 [CMD] /opt/homebrew/opt/python@3.13/bin/python3.13 /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tools/filter_false_positives.py /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_second/details/dependencies.stackgraphs_ast.raw.db /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_second/details/dependencies.stackgraphs_ast.raw_filtered.db
 Copying database from /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_second/details/dependencies.stackgraphs_ast.raw.db to /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_second/details/dependencies.stackgraphs_ast.raw_filtered.db...
 Analyzing dependencies...
@@ -273,11 +273,11 @@ False Positives Breakdown:
   sibling_method: 7
 
 Examples of false positives being removed:
-  1. [display_info (Method)] -> [__init__ (Method)] at row 30 (reason: sibling_method)
-  2. [display_info (Method)] -> [__init__ (Method)] at row 35 (reason: sibling_method)
+  1. [display_info (Method)] -> [__init__ (Method)] at row 19 (reason: sibling_method)
+  2. [display_info (Method)] -> [__init__ (Method)] at row 19 (reason: sibling_method)
   3. [display_info (Method)] -> [__init__ (Method)] at row 35 (reason: sibling_method)
-  4. [display_info (Method)] -> [__init__ (Method)] at row 19 (reason: sibling_method)
-  5. [display_info (Method)] -> [__init__ (Method)] at row 19 (reason: sibling_method)
+  4. [display_info (Method)] -> [__init__ (Method)] at row 35 (reason: sibling_method)
+  5. [search_trains (Method)] -> [__init__ (Method)] at row 67 (reason: sibling_method)
   ... and 2 more
 
 Removing false positives from database...
@@ -303,32 +303,15 @@ Import deps added: 6
 Found 21 classes to analyze...
 Found 63 methods/functions to analyze...
 Extend deps added (AST): 1
-  __init__ -> passengers (Use)
-  get_passenger -> passengers (Use)
-  get_all_passengers -> passengers (Use)
-  __init__ -> stations (Use)
-  get_station -> stations (Use)
-  get_all_stations -> stations (Use)
-  find_by_name -> stations (Use)
-  get_route -> routes (Use)
-  get_all_routes -> routes (Use)
-  get_routes_by_station -> routes (Use)
-  __init__ -> email, id, name, phone (Use)
-  __init__ -> employee_id, salary (Use)
-  get_train -> trains (Use)
-  get_all_trains -> trains (Use)
-  get_trains_by_route -> trains (Use)
-  add_ticket -> ticket_ids (Use)
-  __init__ -> routes (Use)
-  cancel -> status (Use)
-  __init__ -> trains (Use)
-  get_passenger_tickets -> ticket_repo (Use)
-  __init__ -> managed_station_id (Use)
+  __init__ -> tickets (Use)
+  get_ticket -> tickets (Use)
+  get_all_tickets -> tickets (Use)
+  get_tickets_by_passenger -> tickets (Use)
+  __init__ -> passenger_repo, route_repo, station_repo, ticket_repo, train_repo (Use)
   book_ticket -> passenger_repo, route_repo, ticket_repo, train_repo (Use)
   cancel_ticket -> ticket_repo, train_repo (Use)
   search_trains -> train_repo (Use)
-  __init__ -> booking_date, fare, passenger_id, route_id, seat_number, status, ticket_id, train_id, travel_date (Use)
-  __init__ -> ticket_ids (Use)
+  get_passenger_tickets -> ticket_repo (Use)
   clear_cache -> cached_stats, metrics (Use)
   export_all_reports -> metrics, reports (Use)
   generate_passenger_report -> passenger_repo, reports (Use)
@@ -337,18 +320,35 @@ Extend deps added (AST): 1
   get_popular_routes -> ticket_repo (Use)
   get_station_traffic -> cached_stats, route_repo (Use)
   generate_summary -> metrics, passenger_repo, reports, route_repo, station_repo, ticket_repo, train_repo (Use)
-  __init__ -> passenger_repo, route_repo, station_repo, ticket_repo, train_repo (Use)
-  __init__ -> city, state, station_id, station_name (Use)
-  __init__ -> base_fare, destination_station_id, distance, intermediate_stop_ids, origin_station_id, route_id (Use)
-  add_intermediate_stop -> intermediate_stop_ids (Use)
-  get_ticket -> tickets (Use)
-  get_all_tickets -> tickets (Use)
-  get_tickets_by_passenger -> tickets (Use)
-  __init__ -> tickets (Use)
+  __init__ -> passengers (Use)
+  get_passenger -> passengers (Use)
+  get_all_passengers -> passengers (Use)
+  __init__ -> stations (Use)
+  get_station -> stations (Use)
+  get_all_stations -> stations (Use)
+  find_by_name -> stations (Use)
   __init__ -> cached_stats, metrics, passenger_repo, reports, route_repo, station_repo, ticket_repo, train_repo (Use)
   generate_station_report -> reports, route_repo, station_repo, train_repo (Use)
   generate_train_report -> reports, train_repo (Use)
+  __init__ -> trains (Use)
+  get_train -> trains (Use)
+  get_all_trains -> trains (Use)
+  get_trains_by_route -> trains (Use)
+  __init__ -> managed_station_id (Use)
   __init__ -> arrival_time, available_seats, departure_time, route_id, total_seats, train_id, train_name (Use)
+  cancel -> status (Use)
+  __init__ -> email, id, name, phone (Use)
+  __init__ -> employee_id, salary (Use)
+  __init__ -> booking_date, fare, passenger_id, route_id, seat_number, status, ticket_id, train_id, travel_date (Use)
+  get_route -> routes (Use)
+  get_all_routes -> routes (Use)
+  get_routes_by_station -> routes (Use)
+  __init__ -> routes (Use)
+  __init__ -> ticket_ids (Use)
+  add_ticket -> ticket_ids (Use)
+  __init__ -> base_fare, destination_station_id, distance, intermediate_stop_ids, origin_station_id, route_id (Use)
+  add_intermediate_stop -> intermediate_stop_ids (Use)
+  __init__ -> city, state, station_id, station_name (Use)
   __init__ -> assigned_station_id (Use)
 
 ======================================================================
@@ -371,38 +371,38 @@ Updating to have Class as parent (and merging duplicates)...
    (Deicide will now process these dependencies!)
 
 [INFO] Examples (moved fields):
-  - move: Field 'Person.name' from Method 'Person.__init__' -> Class 'Person'
-  - move: Field 'Person.id' from Method 'Person.__init__' -> Class 'Person'
-  - move: Field 'Person.email' from Method 'Person.__init__' -> Class 'Person'
-  - move: Field 'Person.phone' from Method 'Person.__init__' -> Class 'Person'
-  - move: Field 'PassengerRepository.passengers' from Method 'PassengerRepository.__init__' -> Class 'PassengerRepository'
-  - move: Field 'TrainStationRepository.stations' from Method 'TrainStationRepository.__init__' -> Class 'TrainStationRepository'
-  - move: Field 'RouteRepository.routes' from Method 'RouteRepository.__init__' -> Class 'RouteRepository'
-  - move: Field 'Ticket.route_id' from Method 'Ticket.__init__' -> Class 'Ticket'
-  - move: Field 'Ticket.train_id' from Method 'Ticket.__init__' -> Class 'Ticket'
-  - move: Field 'Ticket.seat_number' from Method 'Ticket.__init__' -> Class 'Ticket'
-  - move: Field 'Ticket.fare' from Method 'Ticket.__init__' -> Class 'Ticket'
-  - move: Field 'Ticket.booking_date' from Method 'Ticket.__init__' -> Class 'Ticket'
-  - move: Field 'Ticket.travel_date' from Method 'Ticket.__init__' -> Class 'Ticket'
-  - move: Field 'Ticket.status' from Method 'Ticket.__init__' -> Class 'Ticket'
-  - move: Field 'Staff.employee_id' from Method 'Staff.__init__' -> Class 'Staff'
-  - move: Field 'Staff.salary' from Method 'Staff.__init__' -> Class 'Staff'
-  - move: Field 'TrainRepository.trains' from Method 'TrainRepository.__init__' -> Class 'TrainRepository'
-  - move: Field 'Passenger.ticket_ids' from Method 'Passenger.__init__' -> Class 'Passenger'
-  - move: Field 'Ticket.ticket_id' from Method 'Ticket.__init__' -> Class 'Ticket'
-  - move: Field 'Ticket.passenger_id' from Method 'Ticket.__init__' -> Class 'Ticket'
+  - move: Field 'TicketRepository.tickets' from Method 'TicketRepository.__init__' -> Class 'TicketRepository'
   - move: Field 'BookingService.train_repo' from Method 'BookingService.__init__' -> Class 'BookingService'
   - move: Field 'BookingService.route_repo' from Method 'BookingService.__init__' -> Class 'BookingService'
   - move: Field 'BookingService.ticket_repo' from Method 'BookingService.__init__' -> Class 'BookingService'
   - move: Field 'BookingService.passenger_repo' from Method 'BookingService.__init__' -> Class 'BookingService'
   - move: Field 'BookingService.station_repo' from Method 'BookingService.__init__' -> Class 'BookingService'
+  - move: Field 'ReportingService.train_repo' from Method 'ReportingService.__init__' -> Class 'ReportingService'
+  - move: Field 'ReportingService.route_repo' from Method 'ReportingService.__init__' -> Class 'ReportingService'
+  - move: Field 'ReportingService.ticket_repo' from Method 'ReportingService.__init__' -> Class 'ReportingService'
+  - move: Field 'ReportingService.passenger_repo' from Method 'ReportingService.__init__' -> Class 'ReportingService'
+  - move: Field 'ReportingService.station_repo' from Method 'ReportingService.__init__' -> Class 'ReportingService'
+  - move: Field 'ReportingService.reports' from Method 'ReportingService.__init__' -> Class 'ReportingService'
+  - move: Field 'ReportingService.metrics' from Method 'ReportingService.__init__' -> Class 'ReportingService'
+  - move: Field 'ReportingService.cached_stats' from Method 'ReportingService.__init__' -> Class 'ReportingService'
+  - move: Field 'TrainStation.station_name' from Method 'TrainStation.__init__' -> Class 'TrainStation'
+  - move: Field 'TrainStation.state' from Method 'TrainStation.__init__' -> Class 'TrainStation'
+  - move: Field 'PassengerRepository.passengers' from Method 'PassengerRepository.__init__' -> Class 'PassengerRepository'
+  - move: Field 'TrainStationRepository.stations' from Method 'TrainStationRepository.__init__' -> Class 'TrainStationRepository'
+  - move: Field 'TicketAgent.assigned_station_id' from Method 'TicketAgent.__init__' -> Class 'TicketAgent'
+  - move: Field 'TrainRepository.trains' from Method 'TrainRepository.__init__' -> Class 'TrainRepository'
+  - move: Field 'Train.train_name' from Method 'Train.__init__' -> Class 'Train'
+  - move: Field 'Train.route_id' from Method 'Train.__init__' -> Class 'Train'
+  - move: Field 'Train.total_seats' from Method 'Train.__init__' -> Class 'Train'
+  - move: Field 'Train.available_seats' from Method 'Train.__init__' -> Class 'Train'
+  - move: Field 'Train.departure_time' from Method 'Train.__init__' -> Class 'Train'
 
 [INFO] Examples (merged duplicates):
-  - merge: Field 'Ticket.status' from Method 'Ticket.cancel' -> canonical Field 'Ticket.status'
   - merge: Field 'ReportingService.cached_stats' from Method 'ReportingService.get_station_traffic' -> canonical Field 'ReportingService.cached_stats'
   - merge: Field 'ReportingService.cached_stats' from Method 'ReportingService.clear_cache' -> canonical Field 'ReportingService.cached_stats'
   - merge: Field 'Train.available_seats' from Method 'Train.book_seat' -> canonical Field 'Train.available_seats'
   - merge: Field 'Train.available_seats' from Method 'Train.cancel_seat' -> canonical Field 'Train.available_seats'
+  - merge: Field 'Ticket.status' from Method 'Ticket.cancel' -> canonical Field 'Ticket.status'
 [INFO] Wrote report: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/RESULTS_QuickStart_Examples/python_toy_second/details/enhance_python_deps.report.json
 
 ======================================================================
@@ -465,25 +465,25 @@ COMPLETE SUCCESS!
 ✓ Python TOY 2 complete
 
 === 3/4: Java Example - TrainTicketSystem TOY 1 ===
-[2025-12-24T05:51:31Z WARN  neodepends::filesystem] No git repository found. Opening in disk-only mode.
-[2025-12-24T05:51:31Z INFO  neodepends::filesystem] Project opened at: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_JAVA_FIRST/src
-[2025-12-24T05:51:31Z INFO  neodepends] Extracting and writing entities...
-[2025-12-24T05:51:31Z INFO  neodepends] Extracting and writing deps...
-[2025-12-24T05:51:31Z INFO  neodepends::depends] Running Depends on java file(s)...
+[2025-12-24T09:51:36Z WARN  neodepends::filesystem] No git repository found. Opening in disk-only mode.
+[2025-12-24T09:51:36Z INFO  neodepends::filesystem] Project opened at: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_JAVA_FIRST/src
+[2025-12-24T09:51:36Z INFO  neodepends] Extracting and writing entities...
+[2025-12-24T09:51:36Z INFO  neodepends] Extracting and writing deps...
+[2025-12-24T09:51:36Z INFO  neodepends::depends] Running Depends on java file(s)...
 Start parsing files...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/TrainStation.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/TicketUtils.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/Train.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/Route.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/Person.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/Main.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/Ticket.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/Staff.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/TicketAgent.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/TicketBookingSystem.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/StationManager.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/Passenger.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpFkDxwy/TTS/BaseManagementSystem.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/TrainStation.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/TicketUtils.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/Train.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/Route.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/Person.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/Main.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/Ticket.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/Staff.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/TicketAgent.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/TicketBookingSystem.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/StationManager.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/Passenger.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpznbIxh/TTS/BaseManagementSystem.java...
 all files procceed successfully...
 Resolve types and bindings of variables, methods and expressions....
 Resolve type bindings....
@@ -495,35 +495,35 @@ Start create dependencies matrix....
 Finish create dependencies matrix....
 reorder dependency matrix...
 Dependencies data generating done successfully...
-Consumed time: 0.567 s,  or 0.00945 min.
-[2025-12-24T05:51:32Z INFO  neodepends::depends] Loading Depends java output...
-[2025-12-24T05:51:32Z INFO  neodepends] Extracting and writing contents...
-[2025-12-24T05:51:32Z INFO  neodepends] Finished in 1147ms
+Consumed time: 0.559 s,  or 0.009316667 min.
+[2025-12-24T09:51:37Z INFO  neodepends::depends] Loading Depends java output...
+[2025-12-24T09:51:37Z INFO  neodepends] Extracting and writing contents...
+[2025-12-24T09:51:37Z INFO  neodepends] Finished in 1095ms
 ✓ Java TOY 1 complete
 
 === 4/4: Java Example - TrainTicketSystem TOY 2 ===
-[2025-12-24T05:51:33Z WARN  neodepends::filesystem] No git repository found. Opening in disk-only mode.
-[2025-12-24T05:51:33Z INFO  neodepends::filesystem] Project opened at: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_JAVA_SECOND/src
-[2025-12-24T05:51:33Z INFO  neodepends] Extracting and writing entities...
-[2025-12-24T05:51:33Z INFO  neodepends] Extracting and writing deps...
-[2025-12-24T05:51:33Z INFO  neodepends::depends] Running Depends on java file(s)...
+[2025-12-24T09:51:37Z WARN  neodepends::filesystem] No git repository found. Opening in disk-only mode.
+[2025-12-24T09:51:37Z INFO  neodepends::filesystem] Project opened at: /Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/examples/TrainTicketSystem_TOY_JAVA_SECOND/src
+[2025-12-24T09:51:37Z INFO  neodepends] Extracting and writing entities...
+[2025-12-24T09:51:37Z INFO  neodepends] Extracting and writing deps...
+[2025-12-24T09:51:37Z INFO  neodepends::depends] Running Depends on java file(s)...
 Start parsing files...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/BookingService.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/TrainStation.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/TicketRepository.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/Train.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/Route.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/Person.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/Main.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/RouteRepository.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/Ticket.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/Staff.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/TrainRepository.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/TicketAgent.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/PassengerRepository.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/TrainStationRepository.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/StationManager.java...
-parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmpynM4Pv/TTS/Passenger.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/BookingService.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/TrainStation.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/TicketRepository.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/Train.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/Route.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/Person.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/Main.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/RouteRepository.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/Ticket.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/Staff.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/TrainRepository.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/TicketAgent.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/PassengerRepository.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/TrainStationRepository.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/StationManager.java...
+parsing /private/var/folders/_0/5z_tr3x56pv27hl5lcj4vmb80000gn/T/.tmp7LTVhk/TTS/Passenger.java...
 all files procceed successfully...
 Resolve types and bindings of variables, methods and expressions....
 Resolve type bindings....
@@ -535,10 +535,10 @@ Start create dependencies matrix....
 Finish create dependencies matrix....
 reorder dependency matrix...
 Dependencies data generating done successfully...
-Consumed time: 0.455 s,  or 0.007583333 min.
-[2025-12-24T05:51:33Z INFO  neodepends::depends] Loading Depends java output...
-[2025-12-24T05:51:33Z INFO  neodepends] Extracting and writing contents...
-[2025-12-24T05:51:33Z INFO  neodepends] Finished in 944ms
+Consumed time: 0.428 s,  or 0.0071333335 min.
+[2025-12-24T09:51:38Z INFO  neodepends::depends] Loading Depends java output...
+[2025-12-24T09:51:38Z INFO  neodepends] Extracting and writing contents...
+[2025-12-24T09:51:38Z INFO  neodepends] Finished in 908ms
 ✓ Java TOY 2 complete
 
 === QuickStart Complete! ===

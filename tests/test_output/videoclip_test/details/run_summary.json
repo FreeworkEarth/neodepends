@@ -27,11 +27,11 @@
   "per_file_dbs_dir": "/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/videoclip_test/details/per_file_dbs",
   "details_dir": "/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/videoclip_test/details",
   "timings_sec": {
-    "neodepends": 0.32703375816345215,
-    "raw_dv8_export": 0.0024390220642089844,
-    "enhance": 0.09301614761352539,
-    "dv8_export": 0.0022780895233154297,
-    "per_file_db_export": 0.0032050609588623047
+    "neodepends": 0.2978689670562744,
+    "raw_dv8_export": 0.002340078353881836,
+    "enhance": 0.0849757194519043,
+    "dv8_export": 0.002228975296020508,
+    "per_file_db_export": 0.00432896614074707
   },
   "db_summary": {
     "entities_total": 86,

@@ -27,15 +27,15 @@
   "per_file_dbs_dir": "/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details/per_file_dbs",
   "details_dir": "/Users/chrisharing/Desktop/RA Software Architecture Analsysis/AGENT/TEST_AUTO/00_CORE/NEODEPENDS_DEICIDE/00_NEODEPENDS/neodepends/tests/test_output/moviepy_test/details",
   "timings_sec": {
-    "neodepends": 1.7661001682281494,
-    "raw_dv8_export": 0.176497220993042,
-    "enhance": 0.3890841007232666,
-    "dv8_export": 0.14742398262023926,
-    "per_file_db_export": 0.40239572525024414
+    "neodepends": 1.6132142543792725,
+    "raw_dv8_export": 0.16805672645568848,
+    "enhance": 0.3851430416107178,
+    "dv8_export": 0.14760994911193848,
+    "per_file_db_export": 0.38034677505493164
   },
   "db_summary": {
     "entities_total": 1050,
-    "deps_total": 2267,
+    "deps_total": 2265,
     "files_total": 139,
     "classes_total": 79,
     "methods_total": 257,
@@ -45,7 +45,7 @@
       "Create": 70,
       "Extend": 74,
       "Import": 355,
-      "Use": 778
+      "Use": 776
     },
     "breakdown": [
       {
@@ -88,7 +88,7 @@
         "src_kind": "Field",
         "tgt_kind": "Method",
         "dep_kind": "Use",
-        "count": 89
+        "count": 88
       },
       {
         "src_kind": "Method",
@@ -166,7 +166,7 @@
         "src_kind": "Field",
         "tgt_kind": "Field",
         "dep_kind": "Use",
-        "count": 15
+        "count": 14
       },
       {
         "src_kind": "Field",

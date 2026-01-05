@@ -2107,8 +2107,79 @@ def main() -> int:
         action="store_true",
         help="Disable full DV8 DSM + clustering export",
     )
+    parser.add_argument(
+        "--config",
+        choices=["automatic", "default", "python", "java", "manual"],
+        default="manual",
+        help=(
+            "Configuration preset. "
+            "'automatic': Auto-detect language from files and apply best practices. "
+            "'default': Use --langs flag to determine preset (requires explicit --langs). "
+            "'python': Python best practices (stackgraphs + ast + structured + filtering). "
+            "'java': Java best practices (depends + structured + filtering). "
+            "'manual': Specify all options explicitly (default). "
+            "Explicit flags override preset values."
+        ),
+    )
 
     args = parser.parse_args()
+
+    # Apply config presets
+    if args.config in ("automatic", "default", "python", "java"):
+        preset_type = args.config
+
+        # Auto-detect language from file extensions for 'automatic' preset
+        if preset_type == "automatic":
+            # Scan input directory for file extensions
+            input_path = Path(args.input)
+            if input_path.is_file():
+                # Single file - detect from extension
+                if input_path.suffix == ".py":
+                    preset_type = "python"
+                elif input_path.suffix == ".java":
+                    preset_type = "java"
+                else:
+                    preset_type = "python"  # Fallback
+            else:
+                # Directory - scan for predominant language
+                py_count = sum(1 for _ in input_path.rglob("*.py"))
+                java_count = sum(1 for _ in input_path.rglob("*.java"))
+                if java_count > py_count:
+                    preset_type = "java"
+                else:
+                    preset_type = "python"  # Default to Python
+
+        # Detect language from --langs flag for 'default' preset
+        elif preset_type == "default":
+            # Check args.langs to detect language (explicit language required)
+            langs_list = [x.strip().lower() for x in args.langs.split(",") if x.strip()]
+            if "python" in langs_list:
+                preset_type = "python"
+            elif "java" in langs_list:
+                preset_type = "java"
+            else:
+                # Error: --config default requires explicit --langs
+                raise ValueError(
+                    "--config default requires explicit --langs flag. "
+                    "Use '--langs python' or '--langs java', or use '--config automatic' for auto-detection."
+                )
+
+        # Apply Python preset
+        if preset_type == "python":
+            # Set defaults if not explicitly overridden
+            if args.resolver == "depends":  # User didn't change default
+                args.resolver = "stackgraphs"
+            if args.stackgraphs_python_mode == "use-only":  # User didn't change default
+                args.stackgraphs_python_mode = "ast"
+            # dv8_hierarchy already defaults to "structured"
+            args.align_handcount = True  # Enable --filter-architecture
+            args.filter_stackgraphs_false_positives = True
+
+        # Apply Java preset
+        elif preset_type == "java":
+            # args.resolver already defaults to "depends"
+            # dv8_hierarchy already defaults to "structured"
+            args.align_handcount = True  # Enable --filter-architecture
 
     neodepends_bin: Path = _resolve_path_arg(
         args.neodepends_bin, prefer_agent_root=False, must_exist=True, kind="NeoDepends binary"
