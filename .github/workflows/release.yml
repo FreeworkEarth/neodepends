@@ -287,11 +287,11 @@ jobs:
         run: |
           # Get version tag and platform info
           $tag = $env:GITHUB_REF_NAME
-          $host = (rustc -vV | Select-String '^host: ' | ForEach-Object { $_.ToString().Split(' ')[1] })
+          $platform = (rustc -vV | Select-String '^host: ' | ForEach-Object { $_.ToString().Split(' ')[1] })
           $pkgName = "neodepends"
 
           # Create bundle directory
-          $bundleDir = "dist/$pkgName-$tag-$host"
+          $bundleDir = "dist/$pkgName-$tag-$platform"
           New-Item -ItemType Directory -Force -Path "$bundleDir/bin" | Out-Null
 
           # Copy compiled Python binary (main user-facing command)
@@ -310,7 +310,7 @@ jobs:
           if (Test-Path "artifacts") { Copy-Item -Recurse -Force "artifacts" "$bundleDir/artifacts" }
 
           # Create zip archive
-          Compress-Archive -Force -Path $bundleDir -DestinationPath "dist/$pkgName-$tag-$host.zip"
+          Compress-Archive -Force -Path $bundleDir -DestinationPath "dist/$pkgName-$tag-$platform.zip"
 
       # 10. Upload to GitHub Release (only when triggered by tag push)
       - name: Upload release artifacts
