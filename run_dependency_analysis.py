@@ -67,10 +67,13 @@ def find_neodepends_binary():
 
     # Check if any candidate exists
     for candidate in candidates:
-        if Path(candidate).exists():
-            return str(candidate), True
+        candidate_path = Path(candidate)
+        if candidate_path.exists():
+            # Return absolute path to avoid issues when changing directories
+            return str(candidate_path.resolve()), True
 
-    return default, False
+    # Return default as absolute path
+    return str(Path(default).resolve()), False
 
 
 def check_java():
@@ -144,8 +147,9 @@ def run_analysis(neodepends_bin, input_repo=None, output_dir=None, language=None
         language: Language to analyze (if None, will prompt)
         binary_path: Custom binary path (if None, uses neodepends_bin)
     """
+    # Save original working directory before changing it
+    original_cwd = Path.cwd()
     script_dir = Path(__file__).parent.resolve()
-    os.chdir(script_dir)
 
     # Determine if we're in interactive mode (any None values means interactive)
     interactive_mode = (input_repo is None or output_dir is None or language is None)
@@ -182,9 +186,17 @@ def run_analysis(neodepends_bin, input_repo=None, output_dir=None, language=None
     if not input_repo:
         print("[ERROR] Input repository path cannot be empty")
         return False
-    if not Path(input_repo).exists():
-        print(f"[ERROR] Input repository path does not exist: {input_repo}")
+
+    # Resolve input_repo to absolute path (relative to original CWD, not script dir)
+    input_repo_path = Path(input_repo)
+    if not input_repo_path.is_absolute():
+        input_repo_path = (original_cwd / input_repo_path).resolve()
+
+    if not input_repo_path.exists():
+        print(f"[ERROR] Input repository path does not exist: {input_repo_path}")
         return False
+
+    input_repo = str(input_repo_path)
 
     # Use provided output dir or prompt
     if output_dir is None:
@@ -193,8 +205,18 @@ def run_analysis(neodepends_bin, input_repo=None, output_dir=None, language=None
         print("[ERROR] Output directory cannot be empty")
         return False
 
+    # Resolve output_dir to absolute path (relative to original CWD)
+    output_dir_path = Path(output_dir)
+    if not output_dir_path.is_absolute():
+        output_dir_path = (original_cwd / output_dir_path).resolve()
+
+    output_dir = str(output_dir_path)
+
     # Create output directory if it doesn't exist
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
+
+    # Now it's safe to change directory
+    os.chdir(script_dir)
 
     # Use provided language or prompt
     if language is None:
