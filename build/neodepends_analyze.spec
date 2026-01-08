@@ -18,8 +18,11 @@ a = Analysis(
     pathex=[str(tools_dir)],  # Add tools directory to search path
     binaries=[],
     datas=[
-        # Bundle the entire tools directory so neodepends_python_export can be imported
+        # Bundle all required Python scripts from tools directory
         (str(tools_dir / 'neodepends_python_export.py'), 'tools'),
+        (str(tools_dir / 'filter_false_positives.py'), 'tools'),
+        (str(tools_dir / 'enhance_python_deps.py'), 'tools'),
+        (str(tools_dir / 'export_dv8_from_neodepends_db.py'), 'tools'),
     ],
     hiddenimports=[
         'neodepends_python_export',  # Explicitly include the export module
