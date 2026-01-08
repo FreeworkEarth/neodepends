@@ -4,6 +4,12 @@
 __pycache__/
 *.pyc
 
+# PyInstaller build artifacts
+build/build/
+build/dist/
+build/*.spec.bak
+dist/binaries/
+
 # Backup and temporary files
 tools/neodepends_python_export.py.broken_backup
 tools/generate_ground_truth_java_toy.py
