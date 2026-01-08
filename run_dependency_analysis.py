@@ -67,13 +67,24 @@ def find_neodepends_binary():
 
     # Check if any candidate exists
     for candidate in candidates:
-        candidate_path = Path(candidate)
-        if candidate_path.exists():
-            # Return absolute path to avoid issues when changing directories
-            return str(candidate_path.resolve()), True
+        try:
+            candidate_path = Path(candidate)
+            if candidate_path.exists():
+                # Return absolute path to avoid issues when changing directories
+                resolved = candidate_path.resolve()
+                return str(resolved), True
+        except (OSError, RuntimeError) as e:
+            # Skip paths that fail to resolve (e.g., permission issues, broken symlinks)
+            print(f"[DEBUG] Failed to check candidate {candidate}: {e}")
+            continue
 
-    # Return default as absolute path
-    return str(Path(default).resolve()), False
+    # Return default as absolute path (may not exist - caller will validate)
+    try:
+        return str(Path(default).resolve()), False
+    except (OSError, RuntimeError) as e:
+        # If resolve fails, return as-is and let caller handle
+        print(f"[DEBUG] Failed to resolve default path {default}: {e}")
+        return default, False
 
 
 def check_java():
@@ -188,15 +199,21 @@ def run_analysis(neodepends_bin, input_repo=None, output_dir=None, language=None
         return False
 
     # Resolve input_repo to absolute path (relative to original CWD, not script dir)
-    input_repo_path = Path(input_repo)
-    if not input_repo_path.is_absolute():
-        input_repo_path = (original_cwd / input_repo_path).resolve()
+    try:
+        input_repo_path = Path(input_repo)
+        if not input_repo_path.is_absolute():
+            input_repo_path = (original_cwd / input_repo_path).resolve()
+        else:
+            input_repo_path = input_repo_path.resolve()
 
-    if not input_repo_path.exists():
-        print(f"[ERROR] Input repository path does not exist: {input_repo_path}")
+        if not input_repo_path.exists():
+            print(f"[ERROR] Input repository path does not exist: {input_repo_path}")
+            return False
+
+        input_repo = str(input_repo_path)
+    except (OSError, RuntimeError) as e:
+        print(f"[ERROR] Failed to resolve input repository path '{input_repo}': {e}")
         return False
-
-    input_repo = str(input_repo_path)
 
     # Use provided output dir or prompt
     if output_dir is None:
@@ -206,14 +223,20 @@ def run_analysis(neodepends_bin, input_repo=None, output_dir=None, language=None
         return False
 
     # Resolve output_dir to absolute path (relative to original CWD)
-    output_dir_path = Path(output_dir)
-    if not output_dir_path.is_absolute():
-        output_dir_path = (original_cwd / output_dir_path).resolve()
+    try:
+        output_dir_path = Path(output_dir)
+        if not output_dir_path.is_absolute():
+            output_dir_path = (original_cwd / output_dir_path).resolve()
+        else:
+            output_dir_path = output_dir_path.resolve()
 
-    output_dir = str(output_dir_path)
+        output_dir = str(output_dir_path)
 
-    # Create output directory if it doesn't exist
-    output_dir_path.mkdir(parents=True, exist_ok=True)
+        # Create output directory if it doesn't exist
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+    except (OSError, RuntimeError) as e:
+        print(f"[ERROR] Failed to create output directory '{output_dir}': {e}")
+        return False
 
     # Now it's safe to change directory
     os.chdir(script_dir)

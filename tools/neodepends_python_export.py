@@ -68,6 +68,36 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 
+def _get_python_executable() -> str:
+    """
+    Get the correct Python executable to use for subprocess calls.
+
+    Inside PyInstaller bundles, sys.executable points to the bundled executable,
+    not Python. We need to find the actual Python interpreter.
+
+    Raises:
+        RuntimeError: If Python interpreter cannot be found in PATH (PyInstaller only)
+    """
+    # Check if running in PyInstaller bundle
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle - need to find Python
+        # Try common Python executable names
+        for name in ['python3', 'python']:
+            python_path = shutil.which(name)
+            if python_path:
+                return python_path
+
+        # No Python found - this is a critical error
+        raise RuntimeError(
+            "Python interpreter not found in PATH. "
+            "The dependency-analyzer requires Python 3.7+ to be installed and available in PATH. "
+            "Please ensure Python is installed and added to your system PATH, then try again."
+        )
+    else:
+        # Normal Python execution - use sys.executable
+        return sys.executable
+
+
 @dataclass(frozen=True)
 class DbEntity:
     id: bytes
@@ -224,7 +254,7 @@ def run_neodepends(
 
 
 def run_python_enhancement(*, enhance_script: Path, db_path: Path, profile: str, logger: Any) -> None:
-    _run_and_tee([sys.executable, str(enhance_script), str(db_path), "--profile", profile], logger=logger)
+    _run_and_tee([_get_python_executable(), str(enhance_script), str(db_path), "--profile", profile], logger=logger)
 
 def run_stackgraphs_false_positive_filter(
     *,
@@ -239,7 +269,7 @@ def run_stackgraphs_false_positive_filter(
     Important: this must run before the Python enhancement step, otherwise the filter might
     delete enhancement-added deps (which intentionally use method_start rows).
     """
-    _run_and_tee([sys.executable, str(filter_script), str(input_db), str(output_db)], logger=logger)
+    _run_and_tee([_get_python_executable(), str(filter_script), str(input_db), str(output_db)], logger=logger)
 
 
 def _load_entities(conn: sqlite3.Connection) -> Dict[bytes, DbEntity]:
