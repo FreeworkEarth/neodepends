@@ -15,6 +15,7 @@ import os
 import sys
 import subprocess
 import platform
+import argparse
 from pathlib import Path
 
 # Add tools directory to path so we can import neodepends_python_export
@@ -132,27 +133,43 @@ def run_dependency_checks():
     return neodepends_path
 
 
-def run_analysis(neodepends_bin):
-    """Run the interactive dependency analysis"""
+def run_analysis(neodepends_bin, input_repo=None, output_dir=None, language=None, binary_path=None):
+    """
+    Run the dependency analysis
+
+    Args:
+        neodepends_bin: Default path to neodepends binary
+        input_repo: Input repository path (if None, will prompt)
+        output_dir: Output directory path (if None, will prompt)
+        language: Language to analyze (if None, will prompt)
+        binary_path: Custom binary path (if None, uses neodepends_bin)
+    """
     script_dir = Path(__file__).parent.resolve()
     os.chdir(script_dir)
 
     print("Dependency Analysis Configuration")
     print()
 
-    # Prompt for neodepends binary path (with default)
-    print(f"NeoDepends binary: {neodepends_bin}")
-    custom_path = input("Press Enter to use this path, or enter a custom path: ").strip()
-    if custom_path:
-        neodepends_bin = custom_path
+    # Use provided binary path or prompt
+    if binary_path:
+        neodepends_bin = binary_path
         if not Path(neodepends_bin).exists():
             print(f"[ERROR] Binary not found at: {neodepends_bin}")
             return False
+    else:
+        print(f"NeoDepends binary: {neodepends_bin}")
+        custom_path = input("Press Enter to use this path, or enter a custom path: ").strip()
+        if custom_path:
+            neodepends_bin = custom_path
+            if not Path(neodepends_bin).exists():
+                print(f"[ERROR] Binary not found at: {neodepends_bin}")
+                return False
 
     print()
 
-    # Prompt for input repository
-    input_repo = input("Enter input repository path: ").strip()
+    # Use provided input repo or prompt
+    if input_repo is None:
+        input_repo = input("Enter input repository path: ").strip()
     if not input_repo:
         print("[ERROR] Input repository path cannot be empty")
         return False
@@ -160,8 +177,9 @@ def run_analysis(neodepends_bin):
         print(f"[ERROR] Input repository path does not exist: {input_repo}")
         return False
 
-    # Prompt for output location
-    output_dir = input("Enter output directory path: ").strip()
+    # Use provided output dir or prompt
+    if output_dir is None:
+        output_dir = input("Enter output directory path: ").strip()
     if not output_dir:
         print("[ERROR] Output directory cannot be empty")
         return False
@@ -169,8 +187,11 @@ def run_analysis(neodepends_bin):
     # Create output directory if it doesn't exist
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # Prompt for language
-    language = input("Enter language (python or java): ").strip().lower()
+    # Use provided language or prompt
+    if language is None:
+        language = input("Enter language (python or java): ").strip().lower()
+    else:
+        language = language.lower()
     if language not in ("python", "java"):
         print("[ERROR] Language must be 'python' or 'java'")
         return False
@@ -272,7 +293,39 @@ def run_analysis(neodepends_bin):
 
 
 def main():
-    print_header()
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description="NeoDepends - Dependency Analysis Tool",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Interactive mode (prompts for all inputs)
+  %(prog)s
+
+  # Non-interactive mode (for CI/automation)
+  %(prog)s --input /path/to/repo --output results --language python
+
+  # Custom binary path
+  %(prog)s --binary ./bin/neodepends-core --input ./src --output ./out --language java
+        """
+    )
+    parser.add_argument('--binary', '--bin', dest='binary_path',
+                        help='Path to neodepends-core binary (overrides auto-detection)')
+    parser.add_argument('--input', '-i', dest='input_repo',
+                        help='Input repository path to analyze')
+    parser.add_argument('--output', '-o', dest='output_dir',
+                        help='Output directory for results')
+    parser.add_argument('--language', '-l', dest='language',
+                        choices=['python', 'java'],
+                        help='Language to analyze (python or java)')
+    parser.add_argument('--quiet', '-q', action='store_true',
+                        help='Suppress header and non-error output')
+
+    args = parser.parse_args()
+
+    # Print header unless in quiet mode
+    if not args.quiet:
+        print_header()
 
     # Run dependency checks
     neodepends_bin = run_dependency_checks()
@@ -281,11 +334,18 @@ def main():
         print("Please resolve the issues above and try again")
         sys.exit(1)
 
-    print("All dependency checks passed!")
-    print()
+    if not args.quiet:
+        print("All dependency checks passed!")
+        print()
 
-    # Run analysis
-    if not run_analysis(neodepends_bin):
+    # Run analysis with provided arguments or interactive mode
+    if not run_analysis(
+        neodepends_bin,
+        input_repo=args.input_repo,
+        output_dir=args.output_dir,
+        language=args.language,
+        binary_path=args.binary_path
+    ):
         sys.exit(1)
 
 

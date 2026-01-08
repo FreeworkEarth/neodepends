@@ -105,12 +105,11 @@ jobs:
 
           # Test 1: Python example with StackGraphs
           echo "[1/2] Testing Python analysis (StackGraphs)..."
-          ./dependency-analyzer <<EOF || exit 1
-
-          examples/TrainTicketSystem_TOY_PYTHON_FIRST/tts
-          test-output-python
-          python
-          EOF
+          ./dependency-analyzer \
+            --input examples/TrainTicketSystem_TOY_PYTHON_FIRST/tts \
+            --output test-output-python \
+            --language python \
+            --quiet || exit 1
 
           # Verify Python output exists and is not empty
           PYTHON_OUTPUT="test-output-python/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json"
@@ -130,12 +129,11 @@ jobs:
 
           # Test 2: Java example with Depends
           echo "[2/2] Testing Java analysis (Depends)..."
-          ./dependency-analyzer <<EOF || exit 1
-
-          examples/TrainTicketSystem_TOY_JAVA_FIRST
-          test-output-java
-          java
-          EOF
+          ./dependency-analyzer \
+            --input examples/TrainTicketSystem_TOY_JAVA_FIRST \
+            --output test-output-java \
+            --language java \
+            --quiet || exit 1
 
           # Verify Java output exists and is not empty
           JAVA_OUTPUT="test-output-java/dependencies.depends.filtered.dv8-dsm-v3.json"
@@ -185,12 +183,11 @@ jobs:
 
           # Test 1: Python example with StackGraphs
           Write-Host "[1/2] Testing Python analysis (StackGraphs)..." -ForegroundColor Cyan
-          @"
-
-          examples\TrainTicketSystem_TOY_PYTHON_FIRST\tts
-          test-output-python
-          python
-          "@ | .\dependency-analyzer.exe
+          .\dependency-analyzer.exe `
+            --input examples\TrainTicketSystem_TOY_PYTHON_FIRST\tts `
+            --output test-output-python `
+            --language python `
+            --quiet
 
           if ($LASTEXITCODE -ne 0) {
             Write-Host "ERROR: Python analysis failed" -ForegroundColor Red
@@ -215,12 +212,11 @@ jobs:
 
           # Test 2: Java example with Depends
           Write-Host "[2/2] Testing Java analysis (Depends)..." -ForegroundColor Cyan
-          @"
-
-          examples\TrainTicketSystem_TOY_JAVA_FIRST
-          test-output-java
-          java
-          "@ | .\dependency-analyzer.exe
+          .\dependency-analyzer.exe `
+            --input examples\TrainTicketSystem_TOY_JAVA_FIRST `
+            --output test-output-java `
+            --language java `
+            --quiet
 
           if ($LASTEXITCODE -ne 0) {
             Write-Host "ERROR: Java analysis failed" -ForegroundColor Red
