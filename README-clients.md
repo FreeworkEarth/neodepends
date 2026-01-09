@@ -4,36 +4,30 @@ Analyze dependencies between entities (classes, functions, files) in your source
 
 ## Quick Start
 
-1. **Extract the release archive**:
-   ```bash
-   tar -xzf neodepends-v*.tar.gz
-   cd neodepends-v*
-   ```
+1. **Run the analyzer**:
 
-2. **Run the analyzer**:
+   **macOS**: If blocked, run `xattr -d com.apple.quarantine ./dependency-analyzer` first
+
+   **Windows**: If you see "Windows protected your PC", click "More info" then "Run anyway"
+
+   **macOS/Linux**:
    ```bash
    ./dependency-analyzer
    ```
 
-   **macOS only**: If blocked, run `xattr -d com.apple.quarantine ./dependency-analyzer` first
+   **Windows**:
+   ```powershell
+   .\dependency-analyzer.exe
+   ```
 
-3. **Follow the prompts**:
+2. **Follow the prompts**:
    - Enter path to your code repository
    - Enter output directory name
    - Choose language: `python` or `java`
 
-4. **View results**:
+3. **View results**:
    - Open `analysis-result.json` in the output directory to view the dependency dsm
    - The `data/` folder contains database files and raw data
-
-## macOS Users
-
-If macOS blocks the executable, run:
-```bash
-xattr -d com.apple.quarantine ./dependency-analyzer
-```
-
-The tool will automatically handle the rest.
 
 ## Requirements
 
