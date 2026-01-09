@@ -269,8 +269,9 @@ jobs:
           cp "target/release/neodepends" "${BUNDLE_DIR}/bin/neodepends-core"
           chmod +x "${BUNDLE_DIR}/bin/neodepends-core"
 
-          # Copy documentation
-          cp README.md LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
+          # Copy documentation (use client-facing README)
+          cp README-clients.md "${BUNDLE_DIR}/README.md"
+          cp LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
 
           # Copy ONLY required runtime dependency (ultra-minimal release)
           # artifacts/depends.jar - Required for Java dependency analysis
@@ -300,8 +301,8 @@ jobs:
           # Copy Rust binary to bin/ (internal dependency, renamed to neodepends-core)
           Copy-Item "target/release/neodepends.exe" "$bundleDir/bin/neodepends-core.exe"
 
-          # Copy documentation
-          if (Test-Path "README.md") { Copy-Item "README.md" "$bundleDir/README.md" }
+          # Copy documentation (use client-facing README)
+          if (Test-Path "README-clients.md") { Copy-Item "README-clients.md" "$bundleDir/README.md" }
           if (Test-Path "LICENSE") { Copy-Item "LICENSE" "$bundleDir/LICENSE" }
 
           # Copy ONLY required runtime dependency (ultra-minimal release)
