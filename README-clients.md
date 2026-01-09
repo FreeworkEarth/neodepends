@@ -4,6 +4,8 @@ Analyze dependencies between entities (classes, functions, files) in your source
 
 ## Quick Start
 
+### Interactive Mode
+
 1. **Run the analyzer**:
 
    **macOS**: If blocked, run `xattr -d com.apple.quarantine ./dependency-analyzer` first
@@ -28,6 +30,22 @@ Analyze dependencies between entities (classes, functions, files) in your source
 3. **View results**:
    - Open `analysis-result.json` in the output directory to view the dependency dsm
    - The `data/` folder contains database files and raw data
+
+### Command Line Mode
+
+For path autocomplete or automation, use command-line arguments:
+
+**macOS/Linux**:
+```bash
+./dependency-analyzer --input /path/to/repo --output ./results --language python
+```
+
+**Windows**:
+```powershell
+.\dependency-analyzer.exe --input C:\path\to\repo --output .\results --language python
+```
+
+Replace `python` with `java` for Java projects.
 
 ## Requirements
 

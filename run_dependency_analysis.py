@@ -200,6 +200,9 @@ def run_analysis(neodepends_bin, input_repo=None, output_dir=None, language=None
         language: Language to analyze (if None, will prompt)
         binary_path: Custom binary path (if None, uses neodepends_bin)
     """
+    # Track if we're in interactive mode (user will see prompts)
+    interactive_mode = (input_repo is None or output_dir is None or language is None)
+
     # Save original working directory before changing it
     original_cwd = Path.cwd()
     script_dir = Path(__file__).parent.resolve()
@@ -371,6 +374,11 @@ def run_analysis(neodepends_bin, input_repo=None, output_dir=None, language=None
     print(f"  4. Navigate to and select: {output_file}")
     print("=" * 70)
     print()
+
+    # If running in interactive mode, wait for user to press Enter before exiting
+    # (prevents console window from closing immediately when double-clicked)
+    if interactive_mode:
+        input("Press Enter to exit...")
 
     return True
 
