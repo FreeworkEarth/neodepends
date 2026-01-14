@@ -514,8 +514,9 @@ def _dv8_write_dependency_json(
     edges: Iterable[Tuple[str, str, str]],
     output_path: Path,
     sort_key: Optional[Callable[[str], Any]] = None,
+    all_entities: Optional[List[str]] = None,
 ) -> None:
-    out, _variables = _dv8_build_dependency_json(name=name, edges=edges)
+    out, _variables = _dv8_build_dependency_json(name=name, edges=edges, all_entities=all_entities)
     if sort_key is not None:
         out = _dv8_reorder_dependency_json(out, sort_key=sort_key)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -525,8 +526,10 @@ def _dv8_build_dependency_json(
     *,
     name: str,
     edges: Iterable[Tuple[str, str, str]],
+    all_entities: Optional[List[str]] = None,
 ) -> Tuple[Dict[str, Any], List[str]]:
     # edges: (src_name, tgt_name, dep_kind)
+    # all_entities: optional list of ALL entity names to include (even if no dependencies)
     variables: List[str] = []
     idx: Dict[str, int] = {}
     cell_map: Dict[Tuple[int, int], Dict[str, float]] = {}
@@ -539,6 +542,12 @@ def _dv8_build_dependency_json(
         idx[v] = i
         return i
 
+    # First, add all entities to variables list (even those without dependencies)
+    if all_entities:
+        for entity_name in all_entities:
+            ensure(entity_name)
+
+    # Then, process dependencies
     for src, tgt, kind in edges:
         s = ensure(src)
         t = ensure(tgt)
@@ -732,11 +741,14 @@ def export_dv8_file_level(
             encoding="utf-8",
         )
     else:
+        # Include all focus files even if they have no dependencies
+        all_file_names = [_aligned_file_node(f, dv8_hierarchy) for f in focus_file_names]
         _dv8_write_dependency_json(
             name="dependencies (file-level)",
             edges=edges,
             output_path=out_path,
             sort_key=_dv8_sort_key_for_hierarchy(dv8_hierarchy),
+            all_entities=all_file_names,
         )
     con.close()
 
@@ -1644,12 +1656,34 @@ def export_dv8_full_project(
         # Handcount counts unique edges, not call-sites.
         full_edges = sorted(set(full_edges))
 
+    # Collect all entity names (including those without dependencies)
+    all_entity_names: List[str] = []
+    for entity_id in focus_entity_ids:
+        if entity_id not in entities:
+            continue
+        entity_name = _aligned_name(
+            entities,
+            entity_id,
+            dv8_hierarchy=dv8_hierarchy,
+            file_id_memo=file_id_memo,
+            file_name_by_id=file_name_by_id,
+            class_folder_by_id=structured_class_folders,
+            local_base_dotted_by_class_id=local_base_dotted_by_class_id,
+        )
+        if entity_name:
+            all_entity_names.append(entity_name)
+
+    # Add all file names too
+    for file_name in focus_file_names:
+        all_entity_names.append(_aligned_file_node(file_name, dv8_hierarchy))
+
     dep_path = output_path or (out_dir / "dependencies.full.dv8-dependency.json")
     _dv8_write_dependency_json(
         name="dependencies (full)",
         edges=full_edges,
         output_path=dep_path,
         sort_key=_dv8_sort_key_for_hierarchy(dv8_hierarchy),
+        all_entities=all_entity_names,
     )
     con.close()
 
@@ -1871,8 +1905,32 @@ def export_dv8_per_file(
         if align_handcount:
             edges = sorted(set(edges))
 
+        # Collect all entity names (including those without dependencies)
+        all_entity_names: List[str] = []
+        for entity_id in ids:
+            if entity_id not in entities:
+                continue
+            if align_handcount:
+                entity_name = _aligned_name(
+                    entities,
+                    entity_id,
+                    dv8_hierarchy=dv8_hierarchy,
+                    file_id_memo=file_id_memo,
+                    file_name_by_id=file_name_by_id,
+                    class_folder_by_id=class_folder_by_id,
+                    local_base_dotted_by_class_id=local_base_dotted_by_class_id,
+                )
+            else:
+                entity_name = _display_name(entities, entity_id)
+            if entity_name:
+                all_entity_names.append(entity_name)
+
         out_path = out_dir / "dv8_deps" / f"{Path(file_name).stem}.dv8-dependency.json"
-        dv8_obj, variables = _dv8_build_dependency_json(name=Path(file_name).name, edges=edges)
+        dv8_obj, variables = _dv8_build_dependency_json(
+            name=Path(file_name).name,
+            edges=edges,
+            all_entities=all_entity_names,
+        )
         if align_handcount:
             dv8_obj = _dv8_reorder_dependency_json(dv8_obj, sort_key=_dv8_sort_key_for_hierarchy(dv8_hierarchy))
         out_path.parent.mkdir(parents=True, exist_ok=True)
