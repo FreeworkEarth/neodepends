@@ -92,11 +92,12 @@ jobs:
           cp dist/binaries/dependency-analyzer test-run/
           mkdir -p test-run/bin
           cp target/release/neodepends test-run/bin/neodepends-core
-          chmod +x test-run/dependency-analyzer test-run/bin/neodepends-core
 
-          # Copy artifacts (depends.jar required for Java analysis)
-          # NOTE: languages/ not needed - grammar files embedded in Rust binary at compile time
-          cp -R artifacts test-run/
+          # Copy depends.jar to bin/ (required for Java analysis)
+          # neodepends-core looks for depends.jar next to itself
+          cp artifacts/depends.jar test-run/bin/depends.jar
+
+          chmod +x test-run/dependency-analyzer test-run/bin/neodepends-core
 
           # Copy examples directory for testing only (not included in release)
           cp -R examples test-run/
@@ -172,9 +173,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path test-run/bin | Out-Null
           Copy-Item target/release/neodepends.exe test-run/bin/neodepends-core.exe
 
-          # Copy artifacts (depends.jar required for Java analysis)
-          # NOTE: languages/ not needed - grammar files embedded in Rust binary at compile time
-          Copy-Item -Recurse -Force artifacts test-run/
+          # Copy depends.jar to bin/ (required for Java analysis)
+          # neodepends-core looks for depends.jar next to itself
+          Copy-Item artifacts/depends.jar test-run/bin/depends.jar
 
           # Copy examples directory for testing only (not included in release)
           Copy-Item -Recurse -Force examples test-run/
@@ -269,14 +270,13 @@ jobs:
           cp "target/release/neodepends" "${BUNDLE_DIR}/bin/neodepends-core"
           chmod +x "${BUNDLE_DIR}/bin/neodepends-core"
 
+          # Copy depends.jar to bin/ (required for Java dependency analysis)
+          # neodepends-core looks for depends.jar next to itself
+          cp artifacts/depends.jar "${BUNDLE_DIR}/bin/depends.jar" 2>/dev/null || true
+
           # Copy documentation (use client-facing README)
           cp README-clients.md "${BUNDLE_DIR}/README.md"
           cp LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
-
-          # Copy ONLY required runtime dependency (ultra-minimal release)
-          # artifacts/depends.jar - Required for Java dependency analysis
-          # NOTE: languages/ not needed - grammar files embedded in Rust binary at compile time
-          cp -R artifacts "${BUNDLE_DIR}/" 2>/dev/null || true
 
           # Create tarball
           tar -C dist -czf "dist/${PKG_NAME}-${TAG}-${HOST}.tar.gz" "${PKG_NAME}-${TAG}-${HOST}"
@@ -301,14 +301,13 @@ jobs:
           # Copy Rust binary to bin/ (internal dependency, renamed to neodepends-core)
           Copy-Item "target/release/neodepends.exe" "$bundleDir/bin/neodepends-core.exe"
 
+          # Copy depends.jar to bin/ (required for Java dependency analysis)
+          # neodepends-core looks for depends.jar next to itself
+          if (Test-Path "artifacts/depends.jar") { Copy-Item "artifacts/depends.jar" "$bundleDir/bin/depends.jar" }
+
           # Copy documentation (use client-facing README)
           if (Test-Path "README-clients.md") { Copy-Item "README-clients.md" "$bundleDir/README.md" }
           if (Test-Path "LICENSE") { Copy-Item "LICENSE" "$bundleDir/LICENSE" }
-
-          # Copy ONLY required runtime dependency (ultra-minimal release)
-          # artifacts/depends.jar - Required for Java dependency analysis
-          # NOTE: languages/ not needed - grammar files embedded in Rust binary at compile time
-          if (Test-Path "artifacts") { Copy-Item -Recurse -Force "artifacts" "$bundleDir/artifacts" }
 
           # Create zip archive
           Compress-Archive -Force -Path $bundleDir -DestinationPath "dist/$pkgName-$tag-$platform.zip"
