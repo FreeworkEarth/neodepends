@@ -104,6 +104,37 @@ def find_field_usages(method_content: str, field_name: str) -> bool:
         # Snippets can fail to parse (indentation, truncation, etc.). Fall back to regex.
         return _find_field_usages_regex(method_content, field_name)
 
+def is_abstract_class(class_node: ast.ClassDef) -> bool:
+    """Check if a class is an abstract class based on its base classes."""
+    for base in class_node.bases:
+        # Check for ABC
+        if isinstance(base, ast.Name) and base.id == "ABC":
+            return True
+        # Check for metaclass=ABCMeta
+        if isinstance(base, ast.Attribute) and base.attr in ("ABC", "ABCMeta"):
+            return True
+
+    # Check for metaclass keyword argument
+    for keyword in class_node.keywords:
+        if keyword.arg == "metaclass":
+            if isinstance(keyword.value, ast.Name) and keyword.value.id == "ABCMeta":
+                return True
+            if isinstance(keyword.value, ast.Attribute) and keyword.value.attr == "ABCMeta":
+                return True
+
+    return False
+
+def is_abstract_method(func_node: ast.FunctionDef) -> bool:
+    """Check if a method has @abstractmethod decorator."""
+    for decorator in func_node.decorator_list:
+        # Direct @abstractmethod
+        if isinstance(decorator, ast.Name) and decorator.id == "abstractmethod":
+            return True
+        # abc.abstractmethod or ABC.abstractmethod
+        if isinstance(decorator, ast.Attribute) and decorator.attr == "abstractmethod":
+            return True
+    return False
+
 class _MethodBodyFacts(ast.NodeVisitor):
     """
     Collect AST facts from a function/method snippet.
@@ -836,6 +867,88 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
                     continue
                 cursor.execute("DELETE FROM deps WHERE kind = 'Create' AND src = ? AND tgt = ?", (method_id, tgt_id))
             existing_create_by_src[method_id] = set(allowed_create_targets)
+
+    conn.commit()
+
+    # STEP 4: Add abstract method implementation dependencies
+    print(f"\n{'='*70}")
+    print("STEP 4: Detecting abstract method implementations...")
+    print("="*70)
+
+    abstract_impl_deps = 0
+
+    # Index abstract classes and their abstract methods
+    abstract_classes: Set[bytes] = set()
+    abstract_methods_by_class: Dict[bytes, Dict[str, bytes]] = {}
+
+    for class_id, class_name, class_start, class_end, content_id in class_rows:
+        content = get_file_content(content_id, conn)
+        if not content.strip():
+            continue
+
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            continue
+
+        # Find the class node in the AST
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == class_name:
+                # Check if this is an abstract class
+                if is_abstract_class(node):
+                    abstract_classes.add(class_id)
+
+                    # Find abstract methods in this class
+                    for item in node.body:
+                        if isinstance(item, ast.FunctionDef):
+                            if is_abstract_method(item):
+                                # Find the method entity ID
+                                method_id = methods_by_class.get(class_id, {}).get(item.name)
+                                if method_id:
+                                    abstract_methods_by_class.setdefault(class_id, {})[item.name] = method_id
+
+                break
+
+    print(f"Found {len(abstract_classes)} abstract classes")
+    print(f"Found {sum(len(methods) for methods in abstract_methods_by_class.values())} abstract methods")
+
+    # For each abstract method, find implementations in child classes
+    for abstract_class_id, abstract_methods in abstract_methods_by_class.items():
+        # Find all classes that extend this abstract class
+        child_classes = []
+        for child_id, parent_ids in bases_by_class.items():
+            if abstract_class_id in parent_ids:
+                # Check if child is also abstract (if so, skip it)
+                if child_id not in abstract_classes:
+                    child_classes.append(child_id)
+
+        # For each child class, look for methods that implement the abstract methods
+        for child_class_id in child_classes:
+            child_methods = methods_by_class.get(child_class_id, {})
+
+            for abstract_method_name, abstract_method_id in abstract_methods.items():
+                # Check if child has a method with the same name
+                if abstract_method_name in child_methods:
+                    impl_method_id = child_methods[abstract_method_name]
+
+                    # Create dependency: ChildClass.method -> AbstractClass.method
+                    key = (impl_method_id, abstract_method_id, "Implement")
+                    if key not in existing:
+                        cursor.execute(
+                            "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Implement', 0, NULL)",
+                            (impl_method_id, abstract_method_id),
+                        )
+                        existing.add(key)
+                        abstract_impl_deps += 1
+
+                        # Get method names for logging
+                        cursor.execute("SELECT e_child.name, e_parent.name FROM entities e_child, entities e_parent WHERE e_child.id = ? AND e_parent.id = ?", (child_class_id, abstract_class_id))
+                        result = cursor.fetchone()
+                        if result:
+                            child_name, parent_name = result
+                            print(f"  {child_name}.{abstract_method_name} -> {parent_name}.{abstract_method_name} (Implement)")
+
+    print(f"\n[OK] Added {abstract_impl_deps} abstract method implementation dependencies")
 
     conn.commit()
     conn.close()
