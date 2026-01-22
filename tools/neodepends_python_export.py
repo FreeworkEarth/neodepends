@@ -23,8 +23,8 @@ What this filter does (high level):
       <file>/CLASSES/<C>/CONSTRUCTORS/__init__ (Constructor)
       <file>/CLASSES/<C>/METHODS/<m> (Method)
       <file>/CLASSES/<C>/FIELDS/<f> (Field)
-  - Keeps only the “core 5” dependency kinds used in this project:
-      Import, Extend, Create, Call, Use
+  - Keeps only the "core 6" dependency kinds used in this project:
+      Import, Extend, Create, Call, Use, Implement
   - Enforces strict shapes (source-kind -> target-kind):
       Import: File -> File
       Extend: Class -> Class
@@ -697,7 +697,7 @@ def export_dv8_file_level(
     if align_handcount and not edges:
         # Fallback: derive file->file coupling from any cross-file edge when Import edges are missing.
         # We keep the original kind if it is in the core set; otherwise skip it.
-        core_kinds = {"Import", "Extend", "Create", "Call", "Use"}
+        core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Implement"}
         for src_id, tgt_id, dep_kind in dep_rows:
             if dep_kind not in core_kinds:
                 continue
@@ -1483,7 +1483,7 @@ def export_dv8_full_project(
     focus_file_names = pkg_files + root_files
 
     dep_rows = cur.execute("SELECT src, tgt, kind FROM deps").fetchall()
-    core_kinds = {"Import", "Extend", "Create", "Call", "Use"}
+    core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Implement"}
 
     # (1) File-level edges (file -> file) for overview within the same DSM.
     file_level_edges: List[Tuple[str, str, str]] = []
@@ -1768,7 +1768,7 @@ def export_dv8_per_file(
     cur = con.cursor()
 
     file_rows = cur.execute("SELECT id, name FROM entities WHERE kind = 'File' ORDER BY name").fetchall()
-    core_kinds = {"Import", "Extend", "Create", "Call", "Use"}
+    core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Implement"}
     for file_id, file_name in file_rows:
         if align_handcount and file_name.endswith("/__init__.py"):
             continue
