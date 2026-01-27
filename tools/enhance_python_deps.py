@@ -104,6 +104,33 @@ def find_field_usages(method_content: str, field_name: str) -> bool:
         # Snippets can fail to parse (indentation, truncation, etc.). Fall back to regex.
         return _find_field_usages_regex(method_content, field_name)
 
+
+def is_abstract_class(class_node: ast.ClassDef) -> bool:
+    """Check if a class is abstract (inherits ABC or uses ABCMeta)."""
+    for base in class_node.bases:
+        if isinstance(base, ast.Name) and base.id == "ABC":
+            return True
+        if isinstance(base, ast.Attribute) and base.attr in ("ABC", "ABCMeta"):
+            return True
+    for keyword in class_node.keywords:
+        if keyword.arg == "metaclass":
+            if isinstance(keyword.value, ast.Name) and keyword.value.id == "ABCMeta":
+                return True
+            if isinstance(keyword.value, ast.Attribute) and keyword.value.attr == "ABCMeta":
+                return True
+    return False
+
+
+def is_abstract_method(func_node: ast.FunctionDef) -> bool:
+    """Check if a method has @abstractmethod decorator."""
+    for decorator in func_node.decorator_list:
+        if isinstance(decorator, ast.Name) and decorator.id == "abstractmethod":
+            return True
+        if isinstance(decorator, ast.Attribute) and decorator.attr == "abstractmethod":
+            return True
+    return False
+
+
 class _MethodBodyFacts(ast.NodeVisitor):
     """
     Collect AST facts from a function/method snippet.
@@ -838,9 +865,105 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
             existing_create_by_src[method_id] = set(allowed_create_targets)
 
     conn.commit()
+
+    # STEP 4: Add abstract method Override dependencies
+    print(f"\n{'='*70}")
+    print("STEP 4: Detecting abstract method overrides...")
+    print("="*70)
+
+    override_deps_count = 0
+
+    # Index abstract classes and their abstract methods
+    abstract_class_ids: Set[bytes] = set()
+    abstract_methods_by_class: Dict[bytes, Dict[str, bytes]] = {}
+
+    for class_id, class_name, class_start, class_end, content_id in class_rows:
+        content = get_file_content(content_id, conn)
+        if not content.strip():
+            continue
+
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            continue
+
+        # Find the matching class node in the AST
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == class_name:
+                if is_abstract_class(node):
+                    abstract_class_ids.add(class_id)
+
+                    # Collect abstract methods
+                    for item in node.body:
+                        if isinstance(item, ast.FunctionDef) and is_abstract_method(item):
+                            method_id = methods_by_class.get(class_id, {}).get(item.name)
+                            if method_id:
+                                abstract_methods_by_class.setdefault(class_id, {})[item.name] = method_id
+                break
+
+    print(f"Found {len(abstract_class_ids)} abstract classes")
+    print(f"Found {sum(len(m) for m in abstract_methods_by_class.values())} abstract methods")
+
+    # Build a reverse inheritance map: parent -> set of ALL descendants (transitive)
+    # This handles chains like StationManager -> Staff -> Person(ABC)
+    # where StationManager overrides Person.display_info through Staff.
+    children_by_class: Dict[bytes, Set[bytes]] = {}
+    for child_id, parent_ids in bases_by_class.items():
+        for parent_id in parent_ids:
+            children_by_class.setdefault(parent_id, set()).add(child_id)
+
+    def get_all_descendants(class_id: bytes) -> Set[bytes]:
+        """BFS to find all transitive descendants of a class."""
+        descendants: Set[bytes] = set()
+        queue = list(children_by_class.get(class_id, set()))
+        while queue:
+            cid = queue.pop(0)
+            if cid in descendants:
+                continue
+            descendants.add(cid)
+            queue.extend(children_by_class.get(cid, set()))
+        return descendants
+
+    # For each abstract class, find ALL descendant classes that override its abstract methods
+    for abstract_class_id, abstract_methods in abstract_methods_by_class.items():
+        all_descendants = get_all_descendants(abstract_class_id)
+
+        # Filter to concrete (non-abstract) descendants only
+        concrete_descendants = [d for d in all_descendants if d not in abstract_class_ids]
+
+        for child_class_id in concrete_descendants:
+            child_methods = methods_by_class.get(child_class_id, {})
+
+            for abstract_method_name, abstract_method_id in abstract_methods.items():
+                if abstract_method_name in child_methods:
+                    impl_method_id = child_methods[abstract_method_name]
+
+                    # Insert Override dependency: child_method -> parent_abstract_method
+                    key = (impl_method_id, abstract_method_id, "Override")
+                    if key not in existing:
+                        cursor.execute(
+                            "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Override', 0, NULL)",
+                            (impl_method_id, abstract_method_id),
+                        )
+                        existing.add(key)
+                        override_deps_count += 1
+
+                        # Log the override
+                        cursor.execute(
+                            "SELECT e_child.name, e_parent.name FROM entities e_child, entities e_parent WHERE e_child.id = ? AND e_parent.id = ?",
+                            (child_class_id, abstract_class_id),
+                        )
+                        result = cursor.fetchone()
+                        if result:
+                            child_name, parent_name = result
+                            print(f"  {child_name}.{abstract_method_name} -> {parent_name}.{abstract_method_name} (Override)")
+
+    print(f"\n[OK] Added {override_deps_count} Override dependencies")
+
+    conn.commit()
     conn.close()
 
-    return new_deps_count, methods_analyzed
+    return new_deps_count, methods_analyzed, override_deps_count
 
 def fix_field_parent_ids(db_path: str) -> int:
     """
@@ -1064,15 +1187,16 @@ def main() -> int:
     print(f"Source root: {source_root}")
     print()
 
-    # Step 1: Add Method->Field dependencies
+    # Steps 1-4: Add Method->Field dependencies, fix parents, detect overrides
     print("STEP 1: Adding Method->Field dependencies...")
     print("="*70)
-    new_deps, methods = enhance_python_dependencies(db_path, source_root, profile=profile)
+    new_deps, methods, override_count = enhance_python_dependencies(db_path, source_root, profile=profile)
 
     print(f"\n{'='*70}")
-    print(f"Step 1 complete!")
+    print(f"Steps 1 & 4 complete!")
     print(f"  Methods analyzed: {methods}")
     print(f"  New dependencies added: {new_deps}")
+    print(f"  Override dependencies added: {override_count}")
 
     # Step 2: Fix Field parent_ids (CRITICAL for Deicide!)
     print("\n" + "="*70)
@@ -1086,6 +1210,7 @@ def main() -> int:
     print(f"\n{'='*70}")
     print("COMPLETE SUCCESS!")
     print(f"  - {method_field_count} Method->Field dependencies created")
+    print(f"  - {override_count} Override dependencies created")
     print(f"  - {fields_fixed} fields now siblings with methods")
     print(f"  - Database ready for Deicide hierarchical clustering!")
     print(f"{'='*70}\n")
