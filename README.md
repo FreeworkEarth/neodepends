@@ -166,6 +166,12 @@ python3 tools/neodepends_python_export.py \
   --config default
 ```
 
+**Java flags (optional):**
+- `--no-java-enhance` : disable Java postprocessing (constructor Use/Call/Create). Override detection still runs.
+- `--java-enhance-script /path/to/enhance_java_deps.py` : use a custom Java postprocess script.
+- `--no-override` : disable override detection (not recommended).
+- `--depends-jar /path/to/depends.jar` : use a custom Depends jar if it isn’t found.
+
 **What `--langs <language> --config default` does:**
 
 - Uses the `--langs` flag to determine which language preset to apply

@@ -23,8 +23,8 @@ What this filter does (high level):
       <file>/CLASSES/<C>/CONSTRUCTORS/__init__ (Constructor)
       <file>/CLASSES/<C>/METHODS/<m> (Method)
       <file>/CLASSES/<C>/FIELDS/<f> (Field)
-  - Keeps only the “core 5” dependency kinds used in this project:
-      Import, Extend, Create, Call, Use
+  - Keeps only the "core 6" dependency kinds used in this project:
+      Import, Extend, Create, Call, Use, Implement
   - Enforces strict shapes (source-kind -> target-kind):
       Import: File -> File
       Extend: Class -> Class
@@ -66,6 +66,56 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
+
+
+def _get_python_executable() -> str:
+    """
+    Get the correct Python executable to use for subprocess calls.
+
+    Inside PyInstaller bundles, sys.executable points to the bundled executable,
+    not Python. We need to find the actual Python interpreter.
+
+    Raises:
+        RuntimeError: If Python interpreter cannot be found in PATH (PyInstaller only)
+    """
+    # Check if running in PyInstaller bundle
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle - need to find Python
+        # On Windows, try 'python' and 'py' first (more common than python3)
+        # On Unix, try 'python3' first
+        import platform
+        if platform.system() == 'Windows':
+            candidates = ['python', 'py', 'python3']
+        else:
+            candidates = ['python3', 'python']
+
+        for name in candidates:
+            python_path = shutil.which(name)
+            if python_path:
+                # Verify it's a real Python executable, not Windows Store stub
+                try:
+                    result = subprocess.run(
+                        [python_path, '--version'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    if result.returncode == 0:
+                        # Valid Python executable
+                        return python_path
+                except (subprocess.SubprocessError, OSError):
+                    # This executable doesn't work, try next
+                    continue
+
+        # No Python found - this is a critical error
+        raise RuntimeError(
+            "Python interpreter not found in PATH. "
+            "The dependency-analyzer requires Python 3.7+ to be installed and available in PATH. "
+            "Please ensure Python is installed and added to your system PATH, then try again."
+        )
+    else:
+        # Normal Python execution - use sys.executable
+        return sys.executable
 
 
 @dataclass(frozen=True)
@@ -224,11 +274,16 @@ def run_neodepends(
 
 
 def run_python_enhancement(*, enhance_script: Path, db_path: Path, profile: str, logger: Any) -> None:
-    _run_and_tee([sys.executable, str(enhance_script), str(db_path), "--profile", profile], logger=logger)
+    _run_and_tee([_get_python_executable(), str(enhance_script), str(db_path), "--profile", profile], logger=logger)
 
 def run_override_detection(*, override_script: Path, db_path: Path, source_root: Path, logger: Any) -> None:
     """Run the unified detect_overrides.py script (Python + Java override detection)."""
-    _run_and_tee([sys.executable, str(override_script), str(db_path), str(source_root)], logger=logger)
+    _run_and_tee([_get_python_executable(), str(override_script), str(db_path), str(source_root)], logger=logger)
+
+
+def run_java_enhancement(*, enhance_script: Path, db_path: Path, source_root: Path, logger: Any) -> None:
+    """Run Java dependency enhancement (constructor Use/Call heuristics)."""
+    _run_and_tee([_get_python_executable(), str(enhance_script), str(db_path), str(source_root)], logger=logger)
 
 def run_stackgraphs_false_positive_filter(
     *,
@@ -243,7 +298,7 @@ def run_stackgraphs_false_positive_filter(
     Important: this must run before the Python enhancement step, otherwise the filter might
     delete enhancement-added deps (which intentionally use method_start rows).
     """
-    _run_and_tee([sys.executable, str(filter_script), str(input_db), str(output_db)], logger=logger)
+    _run_and_tee([_get_python_executable(), str(filter_script), str(input_db), str(output_db)], logger=logger)
 
 
 def _load_entities(conn: sqlite3.Connection) -> Dict[bytes, DbEntity]:
@@ -468,8 +523,12 @@ def _dv8_write_dependency_json(
     edges: Iterable[Tuple[str, str, str]],
     output_path: Path,
     sort_key: Optional[Callable[[str], Any]] = None,
+    all_entities: Optional[List[str]] = None,
+    collapse_weights: bool = False,
 ) -> None:
-    out, _variables = _dv8_build_dependency_json(name=name, edges=edges)
+    out, _variables = _dv8_build_dependency_json(
+        name=name, edges=edges, all_entities=all_entities, collapse_weights=collapse_weights
+    )
     if sort_key is not None:
         out = _dv8_reorder_dependency_json(out, sort_key=sort_key)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -479,8 +538,11 @@ def _dv8_build_dependency_json(
     *,
     name: str,
     edges: Iterable[Tuple[str, str, str]],
+    all_entities: Optional[List[str]] = None,
+    collapse_weights: bool = False,
 ) -> Tuple[Dict[str, Any], List[str]]:
     # edges: (src_name, tgt_name, dep_kind)
+    # all_entities: optional list of ALL entity names to include (even if no dependencies)
     variables: List[str] = []
     idx: Dict[str, int] = {}
     cell_map: Dict[Tuple[int, int], Dict[str, float]] = {}
@@ -493,12 +555,21 @@ def _dv8_build_dependency_json(
         idx[v] = i
         return i
 
+    # First, add all entities to variables list (even those without dependencies)
+    if all_entities:
+        for entity_name in all_entities:
+            ensure(entity_name)
+
+    # Then, process dependencies
     for src, tgt, kind in edges:
         s = ensure(src)
         t = ensure(tgt)
         key = (s, t)
         vals = cell_map.setdefault(key, {})
-        vals[kind] = float(vals.get(kind, 0.0) + 1.0)
+        if collapse_weights:
+            vals[kind] = 1.0
+        else:
+            vals[kind] = float(vals.get(kind, 0.0) + 1.0)
 
     cells = [{"src": s, "dest": t, "values": vals} for (s, t), vals in sorted(cell_map.items())]
     out = {"@schemaVersion": "1.0", "name": name, "variables": variables, "cells": cells}
@@ -564,6 +635,7 @@ def export_dv8_file_level(
     include_self_edges: bool,
     align_handcount: bool,
     dv8_hierarchy: str,
+    collapse_weights: bool = False,
 ) -> None:
     """
     Export a single DV8 dependency matrix at FILE level.
@@ -679,18 +751,25 @@ def export_dv8_file_level(
                 continue
             key = (index[s], index[t])
             values = cell_map.setdefault(key, {})
-            values[k] = values.get(k, 0.0) + 1.0
+            if collapse_weights:
+                values[k] = 1.0
+            else:
+                values[k] = values.get(k, 0.0) + 1.0
         cells = [{"src": s, "dest": t, "values": v} for (s, t), v in sorted(cell_map.items())]
         out_path.write_text(
             json.dumps({"@schemaVersion": "1.0", "name": "dependencies (file-level)", "variables": variables, "cells": cells}, indent=2),
             encoding="utf-8",
         )
     else:
+        # Include all focus files even if they have no dependencies
+        all_file_names = [_aligned_file_node(f, dv8_hierarchy) for f in focus_file_names]
         _dv8_write_dependency_json(
             name="dependencies (file-level)",
             edges=edges,
             output_path=out_path,
             sort_key=_dv8_sort_key_for_hierarchy(dv8_hierarchy),
+            all_entities=all_file_names,
+            collapse_weights=collapse_weights,
         )
     con.close()
 
@@ -707,6 +786,12 @@ def _display_name_with_file(
     file_name = file_name_by_id.get(file_id)
     if not file_name:
         return None
+    file_name = file_name.replace("\\", "/")
+    if file_name.startswith("./"):
+        file_name = file_name[2:]
+    is_java = file_name.endswith(".java")
+    if is_java and file_name.startswith("src/"):
+        file_name = file_name[4:]
 
     ent = entities[entity_id]
     if ent.kind == "File":
@@ -897,10 +982,51 @@ def _structured_name(
     file_name = file_name_by_id.get(file_id)
     if not file_name:
         return None
+    file_name = file_name.replace("\\", "/")
+    if file_name.startswith("./"):
+        file_name = file_name[2:]
+    is_java = file_name.endswith(".java")
+    if is_java and file_name.startswith("src/"):
+        file_name = file_name[4:]
 
     ent = entities.get(entity_id)
     if ent is None:
         return None
+
+    # Java handcount uses a different path layout (no /CLASSES, no inner/subclass folders).
+    if file_name.endswith(".java"):
+        if ent.kind == "File":
+            return _handcount_file_node(file_name)
+
+        owner_cls = ent if ent.kind == "Class" else _owner_class_entity(entities, entity_id)
+        cls_name = owner_cls.name if owner_cls is not None else None
+
+        if ent.kind == "Class":
+            if not cls_name:
+                return None
+            return f"{file_name}/{cls_name}/self (Class)"
+
+        if ent.kind == "Field":
+            if not cls_name:
+                return None
+            return f"{file_name}/{cls_name}/fields/{ent.name} (Field)"
+
+        if ent.kind == "Method":
+            if not cls_name:
+                return None
+            # Java constructors are stored as <init>; handcount uses class name.
+            if ent.name in {"<init>", cls_name}:
+                return f"{file_name}/{cls_name}/constructors/{cls_name} (Constructor)"
+            return f"{file_name}/{cls_name}/methods/{ent.name} (Method)"
+
+        if ent.kind == "Constructor":
+            if not cls_name:
+                return None
+            ctor_name = ent.name or cls_name
+            return f"{file_name}/{cls_name}/constructors/{ctor_name} (Constructor)"
+
+        if ent.kind == "Function":
+            return f"{file_name}/functions/{ent.name} (Function)"
 
     if ent.kind == "File":
         return _structured_file_node(file_name)
@@ -1033,6 +1159,12 @@ def _flat_name(
     file_name = file_name_by_id.get(file_id)
     if not file_name:
         return None
+    file_name = file_name.replace("\\", "/")
+    if file_name.startswith("./"):
+        file_name = file_name[2:]
+    is_java = file_name.endswith(".java")
+    if is_java and file_name.startswith("src/"):
+        file_name = file_name[4:]
 
     ent = entities.get(entity_id)
     if ent is None:
@@ -1067,6 +1199,12 @@ def _flat_name(
         if ent.name in {"__init__", "__new__"}:
             return f"{file_name}/+CONSTRUCTORS/{cls_dotted}/{ent.name} (Constructor)"
         return f"{file_name}/+METHODS/{cls_dotted}/{ent.name} (Method)"
+
+    if ent.kind == "Constructor":
+        if cls_dotted is None:
+            return None
+        ctor_name = ent.name or cls_dotted
+        return f"{file_name}/+CONSTRUCTORS/{cls_dotted}/{ctor_name} (Constructor)"
 
     return f"{file_name}::{_display_name(entities, entity_id)}"
 
@@ -1128,6 +1266,12 @@ def _handcount_name(
     file_name = file_name_by_id.get(file_id)
     if not file_name:
         return None
+    file_name = file_name.replace("\\", "/")
+    if file_name.startswith("./"):
+        file_name = file_name[2:]
+    is_java = file_name.endswith(".java")
+    if is_java and file_name.startswith("src/"):
+        file_name = file_name[4:]
 
     ent = entities.get(entity_id)
     if ent is None:
@@ -1143,6 +1287,38 @@ def _handcount_name(
         chain = _class_chain_names(entities, cls.id)
         if chain:
             cls_dotted = ".".join(chain)
+
+    if is_java:
+        class_chain = _class_chain_names(entities, cls.id) if cls is not None else []
+        class_path = "/".join(class_chain) if class_chain else None
+        class_leaf = class_chain[-1] if class_chain else None
+
+        if ent.kind == "Class":
+            chain = _class_chain_names(entities, entity_id)
+            if not chain:
+                return None
+            return f"{file_name}/{'/'.join(chain)} (Class)"
+
+        if ent.kind == "Field":
+            if class_path is None:
+                return None
+            return f"{file_name}/{class_path}/fields/{ent.name} (Field)"
+
+        if ent.kind == "Method":
+            if class_path is None:
+                return f"{file_name}/{ent.name} (Method)"
+            if ent.name in {"<init>", "<clinit>"} or (class_leaf and ent.name == class_leaf):
+                ctor_name = class_leaf or ent.name
+                return f"{file_name}/{class_path}/constructors/{ctor_name} (Constructor)"
+            return f"{file_name}/{class_path}/methods/{ent.name} (Method)"
+
+        if ent.kind == "Constructor":
+            if class_path is None:
+                return None
+            ctor_name = ent.name if ent.name else (class_leaf or "")
+            if not ctor_name:
+                return None
+            return f"{file_name}/{class_path}/constructors/{ctor_name} (Constructor)"
 
     if ent.kind == "Class":
         chain = _class_chain_names(entities, entity_id)
@@ -1229,11 +1405,15 @@ def _handcount_var_sort_key(var: str) -> Tuple[int, str, int, str, str]:
     if var.startswith("(External "):
         return (9, var, 9, "", var)
 
-    # Extract file path: substring up to first ".py"
+    # Extract file path: substring up to first ".py" or ".java"
     file_path = var
     if ".py/" in var:
         file_path = var.split(".py/", 1)[0] + ".py"
+    elif ".java/" in var:
+        file_path = var.split(".java/", 1)[0] + ".java"
     elif var.endswith(".py"):
+        file_path = var
+    elif var.endswith(".java"):
         file_path = var
 
     file_group = 0 if "/" in file_path else 1  # pkg-first
@@ -1241,15 +1421,19 @@ def _handcount_var_sort_key(var: str) -> Tuple[int, str, int, str, str]:
     # Type rank within file.
     if var.endswith("/module (Module)"):
         type_rank = 0
-    elif "/FUNCTIONS/" in var:
+    elif "/FUNCTIONS/" in var or "/functions/" in var:
         type_rank = 1
-    elif "/CLASSES/" in var and var.endswith(" (Class)") and "/FIELDS/" not in var and "/METHODS/" not in var and "/CONSTRUCTORS/" not in var:
+    elif (
+        ("/CLASSES/" in var and var.endswith(" (Class)"))
+        or var.endswith("/self (Class)")
+        or (".java/" in var and var.endswith(" (Class)"))
+    ):
         type_rank = 2
-    elif "/CONSTRUCTORS/" in var:
+    elif "/CONSTRUCTORS/" in var or "/constructors/" in var:
         type_rank = 3
-    elif "/METHODS/" in var:
+    elif "/METHODS/" in var or "/methods/" in var:
         type_rank = 4
-    elif "/FIELDS/" in var:
+    elif "/FIELDS/" in var or "/fields/" in var:
         type_rank = 5
     else:
         type_rank = 8
@@ -1259,6 +1443,19 @@ def _handcount_var_sort_key(var: str) -> Tuple[int, str, int, str, str]:
     if "/CLASSES/" in var:
         after = var.split("/CLASSES/", 1)[1]
         class_name = after.split("/", 1)[0].replace(" (Class)", "")
+    elif "/self (Class)" in var:
+        # Java-style (legacy): <file>/<Class>/self (Class)
+        try:
+            after = var.split(file_path + "/", 1)[1]
+            class_name = after.split("/", 1)[0]
+        except Exception:
+            class_name = ""
+    elif ".java/" in var:
+        try:
+            after = var.split(file_path + "/", 1)[1]
+            class_name = after.split("/", 1)[0].replace(" (Class)", "")
+        except Exception:
+            class_name = ""
 
     # member name: last path segment before " ("
     leaf = var.rsplit("/", 1)[-1]
@@ -1391,6 +1588,7 @@ def export_dv8_full_project(
     include_self_edges: bool,
     align_handcount: bool,
     dv8_hierarchy: str,
+    collapse_weights: bool = False,
 ) -> None:
     """
     Export a single "full" DV8 dependency matrix that supports drill-down in DV8.
@@ -1466,10 +1664,10 @@ def export_dv8_full_project(
             file_level_edges.append((src_node, f"(External File) {tgt_file_name}", dep_kind))
 
     # (2) Entity-level edges for drill-down.
-    # Keep focus entities: file/class/method/function/field entities that belong to focus files.
+    # Keep focus entities: file/class/method/function/field/constructor entities that belong to focus files.
     focus_entity_ids: Set[bytes] = set()
     for eid, ent in entities.items():
-        if ent.kind not in {"File", "Class", "Method", "Function", "Field"}:
+        if ent.kind not in {"File", "Class", "Method", "Function", "Field", "Constructor"}:
             continue
         file_id = _ancestor_file_id(entities, eid, file_id_memo)
         if file_id is None:
@@ -1534,13 +1732,17 @@ def export_dv8_full_project(
                 continue
             if dep_kind == "Extend" and not (src_kind == "Class" and tgt_kind == "Class"):
                 continue
-            if dep_kind == "Create" and not (src_kind in {"Method", "Function"} and tgt_kind == "Class"):
+            if dep_kind == "Create" and not (src_kind in {"Method", "Function", "Constructor"} and tgt_kind == "Class"):
                 continue
-            if dep_kind == "Call" and not (src_kind in {"Method", "Function"} and tgt_kind in {"Method", "Function"}):
+            if dep_kind == "Call" and not (
+                src_kind in {"Method", "Function", "Constructor"} and tgt_kind in {"Method", "Function", "Constructor"}
+            ):
                 continue
-            if dep_kind == "Use" and not (src_kind in {"Method", "Function"} and tgt_kind == "Field"):
+            if dep_kind == "Use" and not (src_kind in {"Method", "Function", "Constructor"} and tgt_kind == "Field"):
                 continue
-            if dep_kind == "Override" and not (src_kind in {"Method", "Function"} and tgt_kind in {"Method", "Function"}):
+            if dep_kind == "Override" and not (
+                src_kind in {"Method", "Function", "Constructor"} and tgt_kind in {"Method", "Function", "Constructor"}
+            ):
                 continue
             if dep_kind == "Use" and _owner_class_entity(entities, src_id) is None:
                 # Handcount rules treat Use as "method/constructor uses its own fields" (self.field),
@@ -1601,12 +1803,35 @@ def export_dv8_full_project(
         # Handcount counts unique edges, not call-sites.
         full_edges = sorted(set(full_edges))
 
+    # Collect all entity names (including those without dependencies)
+    all_entity_names: List[str] = []
+    for entity_id in focus_entity_ids:
+        if entity_id not in entities:
+            continue
+        entity_name = _aligned_name(
+            entities,
+            entity_id,
+            dv8_hierarchy=dv8_hierarchy,
+            file_id_memo=file_id_memo,
+            file_name_by_id=file_name_by_id,
+            class_folder_by_id=structured_class_folders,
+            local_base_dotted_by_class_id=local_base_dotted_by_class_id,
+        )
+        if entity_name:
+            all_entity_names.append(entity_name)
+
+    # Add all file names too
+    for file_name in focus_file_names:
+        all_entity_names.append(_aligned_file_node(file_name, dv8_hierarchy))
+
     dep_path = output_path or (out_dir / "dependencies.full.dv8-dependency.json")
     _dv8_write_dependency_json(
         name="dependencies (full)",
         edges=full_edges,
         output_path=dep_path,
         sort_key=_dv8_sort_key_for_hierarchy(dv8_hierarchy),
+        all_entities=all_entity_names,
+        collapse_weights=collapse_weights,
     )
     con.close()
 
@@ -1685,6 +1910,7 @@ def export_dv8_per_file(
     write_clustering: bool,
     align_handcount: bool,
     dv8_hierarchy: str,
+    collapse_weights: bool = False,
 ) -> None:
     con = _connect_ro(db_path)
     entities = _load_entities(con)
@@ -1830,8 +2056,33 @@ def export_dv8_per_file(
         if align_handcount:
             edges = sorted(set(edges))
 
+        # Collect all entity names (including those without dependencies)
+        all_entity_names: List[str] = []
+        for entity_id in ids:
+            if entity_id not in entities:
+                continue
+            if align_handcount:
+                entity_name = _aligned_name(
+                    entities,
+                    entity_id,
+                    dv8_hierarchy=dv8_hierarchy,
+                    file_id_memo=file_id_memo,
+                    file_name_by_id=file_name_by_id,
+                    class_folder_by_id=class_folder_by_id,
+                    local_base_dotted_by_class_id=local_base_dotted_by_class_id,
+                )
+            else:
+                entity_name = _display_name(entities, entity_id)
+            if entity_name:
+                all_entity_names.append(entity_name)
+
         out_path = out_dir / "dv8_deps" / f"{Path(file_name).stem}.dv8-dependency.json"
-        dv8_obj, variables = _dv8_build_dependency_json(name=Path(file_name).name, edges=edges)
+        dv8_obj, variables = _dv8_build_dependency_json(
+            name=Path(file_name).name,
+            edges=edges,
+            all_entities=all_entity_names,
+            collapse_weights=collapse_weights,
+        )
         if align_handcount:
             dv8_obj = _dv8_reorder_dependency_json(dv8_obj, sort_key=_dv8_sort_key_for_hierarchy(dv8_hierarchy))
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2016,6 +2267,13 @@ def main() -> int:
     )
     parser.add_argument("--no-override", action="store_true", help="Skip override detection step (Java @Override / Python @abstractmethod)")
     parser.add_argument(
+        "--java-enhance-script",
+        type=Path,
+        default=None,
+        help="Path to enhance_java_deps.py (default: auto-discovered next to this script)",
+    )
+    parser.add_argument("--no-java-enhance", action="store_true", help="Skip Java dependency enhancement step")
+    parser.add_argument(
         "--include-external-targets",
         action="store_true",
         default=True,
@@ -2105,6 +2363,18 @@ def main() -> int:
         action="store_true",
         default=False,
         help="Apply architecture-DSM filtering for DV8 exports: core kinds, strict src/tgt shapes, unique-edge dedupe, deterministic ordering",
+    )
+    parser.add_argument(
+        "--collapse-weights",
+        action="store_true",
+        default=False,
+        help="Collapse DV8 edge weights to 1 per src->tgt->kind (for handcount comparison)",
+    )
+    parser.add_argument(
+        "--no-collapse-weights",
+        action="store_true",
+        default=False,
+        help="Disable weight collapsing even when --filter-architecture is enabled",
     )
     parser.add_argument(
         "--match-to-ts-config",
@@ -2233,6 +2503,11 @@ def main() -> int:
         local = Path(__file__).resolve().parent / "detect_overrides.py"
         override_script = local if local.exists() else (Path(__file__).resolve().parents[3] / "detect_overrides.py")
 
+    java_enhance_script = args.java_enhance_script
+    if java_enhance_script is None:
+        local = Path(__file__).resolve().parent / "enhance_java_deps.py"
+        java_enhance_script = local if local.exists() else (Path(__file__).resolve().parents[3] / "enhance_java_deps.py")
+
     filter_fp_script = args.filter_false_positives_script
     if filter_fp_script is None:
         # Prefer the vendored script inside this repo for self-contained releases.
@@ -2328,8 +2603,12 @@ def main() -> int:
     if dv8_hierarchy == "professor":
         dv8_hierarchy = "structured"
     align_handcount = bool(args.align_handcount) or bool(args.match_to_ts_config)
-    if args.match_to_ts_config:
+    if align_handcount:
         dv8_hierarchy = "handcount"
+    collapse_weights = bool(args.collapse_weights)
+    if align_handcount and not args.no_collapse_weights:
+        collapse_weights = True
+    if args.match_to_ts_config:
         include_external = False
         include_incoming = False
         file_level_include_external = False
@@ -2337,11 +2616,11 @@ def main() -> int:
 
     def run_one(*, resolver: str, out_dir: Path, stackgraphs_python_mode_override: Optional[str] = None) -> Dict[str, Any]:
         out_dir.mkdir(parents=True, exist_ok=True)
-        details_dir = out_dir / "details"
-        details_dir.mkdir(parents=True, exist_ok=True)
+        data_dir = out_dir / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
         terminal_path = args.terminal_output
         if terminal_path is None:
-            terminal_path = details_dir / "terminal_output.txt"
+            terminal_path = data_dir / "terminal_output.txt"
         terminal_path = _resolve_path_arg(
             terminal_path, prefer_agent_root=True, must_exist=False, kind="Terminal output"
         )
@@ -2364,22 +2643,22 @@ def main() -> int:
             stackgraphs_mode = stackgraphs_python_mode_override or args.stackgraphs_python_mode
             option_tag = resolver if resolver == "depends" else f"stackgraphs_{_safe_tag(stackgraphs_mode)}"
 
-            # Main output files (keep in root for easy access)
-            db_path = out_dir / f"dependencies.{option_tag}.db"
-            full_dep_out_path = out_dir / f"dependencies.{option_tag}.filtered.dv8-dsm-v3.json"
+            # Main output file (user-facing, simple name)
+            full_dep_out_path = out_dir / "analysis-result.json"
 
-            # File-level and intermediate files (move to details/ subdirectory)
-            file_level_out_path = details_dir / f"dependencies.{option_tag}.file.dv8-dsm-v3.json"
-            raw_db_path = details_dir / f"dependencies.{option_tag}.raw.db"
-            filtered_raw_db_path = details_dir / f"dependencies.{option_tag}.raw_filtered.db"
-            raw_full_dep_out_path = details_dir / f"dependencies.{option_tag}.raw.dv8-dsm-v3.json"
-            raw_filtered_full_dep_out_path = details_dir / f"dependencies.{option_tag}.raw_filtered.dv8-dsm-v3.json"
-            raw_file_level_out_path = details_dir / f"dependencies.{option_tag}.raw_file.dv8-dsm-v3.json"
-            raw_filtered_file_level_out_path = details_dir / f"dependencies.{option_tag}.raw_filtered_file.dv8-dsm-v3.json"
+            # Database and intermediate files (moved to data/ subdirectory)
+            db_path = data_dir / f"dependencies.{option_tag}.db"
+            file_level_out_path = data_dir / f"dependencies.{option_tag}.file.dv8-dsm-v3.json"
+            raw_db_path = data_dir / f"dependencies.{option_tag}.raw.db"
+            filtered_raw_db_path = data_dir / f"dependencies.{option_tag}.raw_filtered.db"
+            raw_full_dep_out_path = data_dir / f"dependencies.{option_tag}.raw.dv8-dsm-v3.json"
+            raw_filtered_full_dep_out_path = data_dir / f"dependencies.{option_tag}.raw_filtered.dv8-dsm-v3.json"
+            raw_file_level_out_path = data_dir / f"dependencies.{option_tag}.raw_file.dv8-dsm-v3.json"
+            raw_filtered_file_level_out_path = data_dir / f"dependencies.{option_tag}.raw_filtered_file.dv8-dsm-v3.json"
 
             # Intermediate directories (move to details/ subdirectory)
-            raw_out_dir = details_dir / "raw"
-            raw_filtered_out_dir = details_dir / "raw_filtered"
+            raw_out_dir = data_dir / "raw"
+            raw_filtered_out_dir = data_dir / "raw_filtered"
 
             t_neodep = _run_and_tee([str(neodepends_bin), "--version"], logger=logger)
             _ = t_neodep  # keep elapsed for future if needed
@@ -2419,6 +2698,7 @@ def main() -> int:
                     write_clustering=per_file_clustering,
                     align_handcount=align_handcount,
                     dv8_hierarchy=dv8_hierarchy,
+                    collapse_weights=collapse_weights,
                 )
                 if file_level_dv8:
                     export_dv8_file_level(
@@ -2431,6 +2711,7 @@ def main() -> int:
                         include_self_edges=bool(args.file_level_include_self_edges),
                         align_handcount=align_handcount,
                         dv8_hierarchy=dv8_hierarchy,
+                        collapse_weights=collapse_weights,
                     )
                 if full_dv8:
                     export_dv8_full_project(
@@ -2444,6 +2725,7 @@ def main() -> int:
                         include_self_edges=bool(args.file_level_include_self_edges),
                         align_handcount=align_handcount,
                         dv8_hierarchy=dv8_hierarchy,
+                        collapse_weights=collapse_weights,
                     )
                 elapsed_raw_export = time.time() - t_raw
                 raw_exported = True
@@ -2477,6 +2759,7 @@ def main() -> int:
                         write_clustering=per_file_clustering,
                         align_handcount=align_handcount,
                         dv8_hierarchy=dv8_hierarchy,
+                        collapse_weights=collapse_weights,
                     )
                     if file_level_dv8:
                         export_dv8_file_level(
@@ -2489,6 +2772,7 @@ def main() -> int:
                             include_self_edges=bool(args.file_level_include_self_edges),
                             align_handcount=align_handcount,
                             dv8_hierarchy=dv8_hierarchy,
+                            collapse_weights=collapse_weights,
                         )
                     if full_dv8:
                         export_dv8_full_project(
@@ -2502,6 +2786,7 @@ def main() -> int:
                             include_self_edges=bool(args.file_level_include_self_edges),
                             align_handcount=align_handcount,
                             dv8_hierarchy=dv8_hierarchy,
+                            collapse_weights=collapse_weights,
                         )
                     raw_filtered_exported = True
 
@@ -2532,11 +2817,19 @@ def main() -> int:
                         source_root=project_root,
                         logger=logger,
                     )
+                if not args.no_java_enhance and java_enhance_script.exists():
+                    logger.line(f"\n[JAVA] Running Java dependency enhancement: {java_enhance_script}")
+                    run_java_enhancement(
+                        enhance_script=java_enhance_script,
+                        db_path=db_path,
+                        source_root=project_root,
+                        logger=logger,
+                    )
 
             t3 = time.time()
             export_dv8_per_file(
                 db_path=db_path,
-                out_dir=details_dir,
+                out_dir=data_dir,
                 include_external_targets=include_external,
                 include_incoming_edges=include_incoming,
                 only_py=args.only_py,
@@ -2545,13 +2838,14 @@ def main() -> int:
                 write_clustering=per_file_clustering,
                 align_handcount=align_handcount,
                 dv8_hierarchy=dv8_hierarchy,
+                collapse_weights=collapse_weights,
             )
             elapsed_dv8 = time.time() - t3
 
             if file_level_dv8:
                 export_dv8_file_level(
                     db_path=db_path,
-                    out_dir=details_dir,
+                    out_dir=data_dir,
                     output_path=file_level_out_path,
                     focus_prefix=focus_prefix,
                     include_root_py=include_root_py,
@@ -2559,11 +2853,12 @@ def main() -> int:
                     include_self_edges=bool(args.file_level_include_self_edges),
                     align_handcount=align_handcount,
                     dv8_hierarchy=dv8_hierarchy,
+                    collapse_weights=collapse_weights,
                 )
             if full_dv8:
                 export_dv8_full_project(
                     db_path=db_path,
-                    out_dir=details_dir,
+                    out_dir=data_dir,
                     output_path=full_dep_out_path,
                     focus_prefix=focus_prefix,
                     include_root_py=include_root_py,
@@ -2572,6 +2867,7 @@ def main() -> int:
                     include_self_edges=bool(args.file_level_include_self_edges),
                     align_handcount=align_handcount,
                     dv8_hierarchy=dv8_hierarchy,
+                    collapse_weights=collapse_weights,
                 )
 
             elapsed_per_file = 0.0
@@ -2579,7 +2875,7 @@ def main() -> int:
                 t4 = time.time()
                 export_per_file_dbs(
                     db_path=db_path,
-                    out_dir=details_dir,
+                    out_dir=data_dir,
                     include_incoming_edges=include_incoming,
                     only_py=args.only_py,
                     focus_prefix=focus_prefix,
@@ -2593,6 +2889,7 @@ def main() -> int:
                 "stackgraphs_python_mode": stackgraphs_mode if resolver == "stackgraphs" else None,
                 "dv8_hierarchy": dv8_hierarchy,
                 "filter_architecture": align_handcount,
+                "collapse_weights": collapse_weights,
                 "filter_stackgraphs_false_positives": bool(args.filter_stackgraphs_false_positives),
                 "used_filtered_raw_db": used_filtered_db,
                 "input_dir": str(focus_path),
@@ -2613,7 +2910,7 @@ def main() -> int:
                 "raw_full_dv8_dependency_root_path": str(raw_full_dep_out_path)
                 if raw_exported and full_dv8
                 else None,
-                "dv8_dir": str(details_dir / "dv8_deps"),
+                "dv8_dir": str(data_dir / "dv8_deps"),
                 "full_dv8_dependency_path": str(full_dep_out_path)
                 if full_dv8
                 else None,
@@ -2621,8 +2918,8 @@ def main() -> int:
                 "raw_filtered_full_dv8_dependency_root_path": str(raw_filtered_full_dep_out_path)
                 if raw_filtered_exported and full_dv8
                 else None,
-                "per_file_dbs_dir": str(details_dir / "per_file_dbs") if per_file else None,
-                "details_dir": str(details_dir),
+                "per_file_dbs_dir": str(data_dir / "per_file_dbs") if per_file else None,
+                "data_dir": str(data_dir),
                 "timings_sec": {
                     "neodepends": elapsed_neodepends,
                     "raw_dv8_export": elapsed_raw_export,
@@ -2631,7 +2928,7 @@ def main() -> int:
                     "per_file_db_export": elapsed_per_file,
                 },
                 "db_summary": _summarize_db(db_path),
-                "dv8_summary": _summarize_dv8_dir(details_dir / "dv8_deps"),
+                "dv8_summary": _summarize_dv8_dir(data_dir / "dv8_deps"),
                 "raw_db_summary": _summarize_db(raw_db_path) if raw_db_path.exists() else None,
                 "raw_dv8_summary": _summarize_dv8_dir(raw_out_dir / "dv8_deps") if raw_exported else None,
                 "filtered_raw_db_summary": _summarize_db(filtered_raw_db_path) if filtered_raw_db_path.exists() else None,
@@ -2639,14 +2936,14 @@ def main() -> int:
                 if raw_filtered_exported
                 else None,
             }
-            (details_dir / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+            (data_dir / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
             logger.line("")
             logger.line(f"[OK] Main DB: {db_path}")
             if full_dv8:
                 logger.line(f"[OK] Main DV8 DSM: {full_dep_out_path}")
             logger.line("")
-            logger.line(f"[OK] Additional files in: {details_dir}")
+            logger.line(f"[OK] Additional files in: {data_dir}")
             if file_level_dv8:
                 logger.line(f"  - File-level DV8: {file_level_out_path}")
             if raw_db_path.exists():
@@ -2665,10 +2962,10 @@ def main() -> int:
                         logger.line(f"  - Filtered raw DV8 file-level: {raw_filtered_file_level_out_path}")
                     if full_dv8:
                         logger.line(f"  - Filtered raw DV8 full: {raw_filtered_full_dep_out_path}")
-            logger.line(f"  - DV8 per-file deps: {details_dir / 'dv8_deps'}")
+            logger.line(f"  - DV8 per-file deps: {data_dir / 'dv8_deps'}")
             if per_file:
-                logger.line(f"  - Per-file DBs: {details_dir / 'per_file_dbs'}")
-            logger.line(f"  - Run summary: {details_dir / 'run_summary.json'}")
+                logger.line(f"  - Per-file DBs: {data_dir / 'per_file_dbs'}")
+            logger.line(f"  - Run summary: {data_dir / 'run_summary.json'}")
             if not args.no_terminal_output:
                 logger.line(f"[OK] Terminal output: {terminal_path}")
 

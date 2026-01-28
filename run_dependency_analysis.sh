@@ -56,6 +56,17 @@ if [ "$LANGUAGE" != "python" ] && [ "$LANGUAGE" != "java" ]; then
     exit 1
 fi
 
+
+
+# Prompt for Java postprocessing (enhance_java_deps.py)
+JAVA_ENHANCE_FLAG=""
+if [ "$LANGUAGE" == "java" ]; then
+    read -p "Enable Java postprocessing (constructor Use/Call/Create)? [Y/n]: " JAVA_ENHANCE
+    JAVA_ENHANCE=$(echo "$JAVA_ENHANCE" | tr '[:upper:]' '[:lower:]')
+    if [ "$JAVA_ENHANCE" == "n" ] || [ "$JAVA_ENHANCE" == "no" ]; then
+        JAVA_ENHANCE_FLAG="--no-java-enhance"
+    fi
+fi
 # Prompt for model/resolver (accept shortcuts: d/D/depends or s/S/stackgraphs)
 # COMMENTED OUT: Manual resolver selection (kept for future testing)
 # read -p "Enter model (d/D/depends or s/S/stackgraphs): " MODEL
@@ -96,6 +107,9 @@ CMD="$CMD --resolver $MODEL"
 
 # Add default flags
 CMD="$CMD --dv8-hierarchy structured"
+if [ -n "$JAVA_ENHANCE_FLAG" ]; then
+    CMD="$CMD $JAVA_ENHANCE_FLAG"
+fi
 CMD="$CMD --filter-architecture"
 
 # For Python with stackgraphs, add stackgraphs-specific flags
@@ -137,4 +151,3 @@ echo ""
 echo "To visualize results in DV8 Explorer, open:"
 echo "  $OUTPUT_FILE"
 echo "================================================================================"
-
