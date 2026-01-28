@@ -121,6 +121,71 @@ def _normalize_to_handcount_name(name: str) -> str:
 
     return name
 
+def _normalize_java_name(name: str) -> str:
+    if ".java/" not in name:
+        return name
+    file_part, rest = name.split(".java/", 1)
+    file_part = file_part + ".java"
+    file_base = Path(file_part).stem
+
+    def drop_outer(path: str) -> str:
+        parts = [p for p in path.split("/") if p]
+        if len(parts) >= 2 and parts[0] == file_base:
+            parts = parts[1:]
+        return "/".join(parts)
+
+    if rest == "self (File)":
+        return f"{file_part}/module (Module)"
+
+    if rest.endswith("/self (Class)"):
+        cls_path = rest[: -len("/self (Class)")]
+        cls_path = drop_outer(cls_path)
+        return f"{file_part}/{cls_path} (Class)"
+
+    if rest.endswith(" (Class)"):
+        cls_path = rest[: -len(" (Class)")]
+        cls_path = drop_outer(cls_path)
+        return f"{file_part}/{cls_path} (Class)"
+
+    for seg in ("/constructors/", "/methods/", "/fields/"):
+        if seg in rest:
+            before, after = rest.split(seg, 1)
+            before = drop_outer(before)
+            return f"{file_part}/{before}{seg}{after}"
+
+    return name
+
+
+def _strip_prefixes(name: str, prefixes: Sequence[str]) -> str:
+    for prefix in prefixes:
+        if not prefix:
+            continue
+        while name.startswith(prefix):
+            name = name[len(prefix):]
+    return name
+
+
+def _maybe_strip_prefixes(edges: Set[Edge], prefixes: Sequence[str]) -> Set[Edge]:
+    if not prefixes:
+        return edges
+    out: Set[Edge] = set()
+    for s, t, k in edges:
+        out.add((_strip_prefixes(s, prefixes), _strip_prefixes(t, prefixes), k))
+    return out
+
+
+def _maybe_normalize_java(edges: Set[Edge], *, normalize_java: bool) -> Set[Edge]:
+    if not normalize_java:
+        return edges
+    looks_java = any(".java/" in s or ".java/" in t for s, t, _k in edges)
+    if not looks_java:
+        return edges
+    out: Set[Edge] = set()
+    for s, t, k in edges:
+        out.add((_normalize_java_name(s), _normalize_java_name(t), k))
+    return out
+
+
 def _maybe_normalize_neodepends(edges: Set[Edge], *, normalize_professor: bool) -> Set[Edge]:
     if not normalize_professor:
         return edges
@@ -174,7 +239,10 @@ def _edges_from_json(path: Path) -> Set[Edge]:
         out: Set[Edge] = set()
         for item in obj:
             if isinstance(item, (list, tuple)) and len(item) == 3:
-                out.add((str(item[0]), str(item[1]), str(item[2])))
+                kind = str(item[2]).strip()
+                if not kind or kind.startswith("==="):
+                    continue
+                out.add((str(item[0]).strip(), str(item[1]).strip(), kind))
         return out
     raise ValueError(f"Unsupported ground truth format: {path}")
 
@@ -199,11 +267,35 @@ def main() -> int:
         default=False,
         help="If NeoDepends DV8 uses professor-style naming (file/self, Class/self, methods/fields), normalize it to the handcount naming before diffing.",
     )
+    parser.add_argument(
+        "--normalize-java-handcount",
+        action="store_true",
+        default=False,
+        help="Normalize Java naming differences (drop /self for classes and collapse inner-class paths) on both ground truth and NeoDepends edges.",
+    )
+    parser.add_argument(
+        "--strip-prefix",
+        action="append",
+        default=None,
+        help="Strip leading path prefix(es) from both NeoDepends and handcount edges (repeatable or comma-separated).",
+    )
     args = parser.parse_args()
 
     gt = _edges_from_json(args.ground_truth.expanduser().resolve())
     nd = _edges_from_json(args.neodepends_dv8.expanduser().resolve())
     nd = _maybe_normalize_neodepends(nd, normalize_professor=bool(args.normalize_neodepends_professor))
+    gt = _maybe_normalize_java(gt, normalize_java=bool(args.normalize_java_handcount))
+    nd = _maybe_normalize_java(nd, normalize_java=bool(args.normalize_java_handcount))
+    prefixes: List[str] = []
+    if args.strip_prefix:
+        for item in args.strip_prefix:
+            for part in str(item).split(','):
+                part = part.strip()
+                if part:
+                    prefixes.append(part)
+    if prefixes:
+        gt = _maybe_strip_prefixes(gt, prefixes)
+        nd = _maybe_strip_prefixes(nd, prefixes)
 
     missing = sorted(gt - nd)
     extra = sorted(nd - gt)

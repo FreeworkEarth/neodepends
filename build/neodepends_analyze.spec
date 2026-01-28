@@ -22,6 +22,8 @@ a = Analysis(
         (str(tools_dir / 'neodepends_python_export.py'), 'tools'),
         (str(tools_dir / 'filter_false_positives.py'), 'tools'),
         (str(tools_dir / 'enhance_python_deps.py'), 'tools'),
+        (str(tools_dir / 'enhance_java_deps.py'), 'tools'),
+        (str(tools_dir / 'detect_overrides.py'), 'tools'),
         (str(tools_dir / 'export_dv8_from_neodepends_db.py'), 'tools'),
     ],
     hiddenimports=[
