@@ -101,6 +101,31 @@ def _parse_param_names(signature: str) -> Set[str]:
     return names
 
 
+def _add_field_uses(
+    *,
+    block: str,
+    fields: List[Entity],
+    param_names: Set[str],
+    src_id: bytes,
+    cur: sqlite3.Cursor,
+    existing: Set[Tuple[bytes, bytes, str]],
+) -> int:
+    added = 0
+    for field in fields:
+        fname = field.name
+        if re.search(rf"\bthis\.{re.escape(fname)}\b", block):
+            if _add_dep(cur, existing, src_id, field.id, "Use"):
+                added += 1
+            continue
+        if fname in param_names:
+            continue
+        # Bare field usage (assignment/member/index), avoid obj.field
+        if re.search(rf"(?<![\w$.]){re.escape(fname)}\s*(=|\.|\[)", block):
+            if _add_dep(cur, existing, src_id, field.id, "Use"):
+                added += 1
+    return added
+
+
 def _constructor_block(content: str, start_row: int, end_row: int) -> str:
     lines = content.splitlines()
     if start_row <= 0 or end_row <= 0:
@@ -180,10 +205,11 @@ def enhance_java_dependencies(db_path: Path, source_root: Optional[Path] = None)
     added_call = 0
     added_create = 0
 
-    for class_id, ctors in ctors_by_class.items():
+    all_class_ids = set(fields_by_class) | set(ctors_by_class) | set(methods_by_class)
+    for class_id in all_class_ids:
         fields = fields_by_class.get(class_id, [])
-        if not fields:
-            continue
+        ctors = ctors_by_class.get(class_id, [])
+        methods = methods_by_class.get(class_id, [])
         file_id = _ancestor_file_id(entities, class_id)
         if file_id is None:
             continue
@@ -191,29 +217,32 @@ def enhance_java_dependencies(db_path: Path, source_root: Optional[Path] = None)
         if not content:
             continue
 
-        for ctor in ctors:
-            block = _constructor_block(content, ctor.start_row, ctor.end_row)
+        blocks: Dict[bytes, str] = {}
+
+        for method in methods + ctors:
+            block = _constructor_block(content, method.start_row, method.end_row)
             if not block:
                 continue
             block = _strip_comments(block)
+            blocks[method.id] = block
 
-            # Parameter names for conservative assignment detection
             signature = block.split("{", 1)[0]
             param_names = _parse_param_names(signature)
+            if fields:
+                added_use += _add_field_uses(
+                    block=block,
+                    fields=fields,
+                    param_names=param_names,
+                    src_id=method.id,
+                    cur=cur,
+                    existing=existing,
+                )
 
-            # Field assignment detection
-            for field in fields:
-                fname = field.name
-                if re.search(rf"\bthis\.{re.escape(fname)}\s*=", block):
-                    if _add_dep(cur, existing, ctor.id, field.id, "Use"):
-                        added_use += 1
-                    continue
-                # Fallback: bare assignment if not a parameter
-                if fname not in param_names and re.search(rf"\b{re.escape(fname)}\s*=", block):
-                    if _add_dep(cur, existing, ctor.id, field.id, "Use"):
-                        added_use += 1
-
-            # Constructor chaining calls (explicit + implicit)
+        # Constructor chaining calls (explicit + implicit)
+        for ctor in ctors:
+            block = blocks.get(ctor.id, "")
+            if not block:
+                continue
             has_super = re.search(r"\bsuper\s*\(", block) is not None
             has_this = re.search(r"\bthis\s*\(", block) is not None
             if has_super:

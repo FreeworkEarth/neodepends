@@ -54,7 +54,7 @@ $PythonFlags = @(
 Write-Host "=== 1/4: Python Example - TrainTicketSystem TOY 1 ==="
 & py -3 tools\neodepends_python_export.py `
     --neodepends-bin $NeodependsBin `
-    --input "examples\TrainTicketSystem_TOY_PYTHON_FIRST\tts" `
+    --input "..\..\..\000_TOY_EXAMPLES\canonical_examples\python\first\tts" `
     --output-dir "$OutputRoot\python_toy_first" `
     @PythonFlags
 Write-Host "✓ Python TOY 1 complete"
@@ -63,7 +63,7 @@ Write-Host ""
 Write-Host "=== 2/4: Python Example - TrainTicketSystem TOY 2 ==="
 & py -3 tools\neodepends_python_export.py `
     --neodepends-bin $NeodependsBin `
-    --input "examples\TrainTicketSystem_TOY_PYTHON_SECOND\tts" `
+    --input "..\..\..\000_TOY_EXAMPLES\canonical_examples\python\second\tts" `
     --output-dir "$OutputRoot\python_toy_second" `
     @PythonFlags
 Write-Host "✓ Python TOY 2 complete"
@@ -77,7 +77,7 @@ Write-Host "=== 3/4: Java Example - TrainTicketSystem TOY 1 ==="
 New-Item -ItemType Directory -Force -Path "$OutputRoot\java_toy_first" | Out-Null
 
 & $NeodependsBin `
-    --input "examples\TrainTicketSystem_TOY_JAVA_FIRST\src" `
+    --input "..\..\..\000_TOY_EXAMPLES\canonical_examples\java\first\src" `
     --output "$OutputRoot\java_toy_first\dependencies.db" `
     --format sqlite `
     --resources entities,deps,contents `
@@ -98,7 +98,7 @@ Write-Host "=== 4/4: Java Example - TrainTicketSystem TOY 2 ==="
 New-Item -ItemType Directory -Force -Path "$OutputRoot\java_toy_second" | Out-Null
 
 & $NeodependsBin `
-    --input "examples\TrainTicketSystem_TOY_JAVA_SECOND\src" `
+    --input "..\..\..\000_TOY_EXAMPLES\canonical_examples\java\second\src" `
     --output "$OutputRoot\java_toy_second\dependencies.db" `
     --format sqlite `
     --resources entities,deps,contents `

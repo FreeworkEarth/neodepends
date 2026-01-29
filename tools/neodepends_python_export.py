@@ -1726,7 +1726,7 @@ def export_dv8_full_project(
             # - Extend: Class -> Class
             # - Create: Method -> Class
             # - Call: Method -> Method
-            # - Use: Method -> Field
+            # - Use: Method -> Field (and Field -> Field for intra-class field uses)
             # - Override: Method -> Method
             if dep_kind == "Import" and not (src_kind == "File" and tgt_kind == "File"):
                 continue
@@ -1738,7 +1738,9 @@ def export_dv8_full_project(
                 src_kind in {"Method", "Function", "Constructor"} and tgt_kind in {"Method", "Function", "Constructor"}
             ):
                 continue
-            if dep_kind == "Use" and not (src_kind in {"Method", "Function", "Constructor"} and tgt_kind == "Field"):
+            if dep_kind == "Use" and not (
+                (src_kind in {"Method", "Function", "Constructor"} and tgt_kind == "Field") or (src_kind == "Field" and tgt_kind == "Field")
+            ):
                 continue
             if dep_kind == "Override" and not (
                 src_kind in {"Method", "Function", "Constructor"} and tgt_kind in {"Method", "Function", "Constructor"}

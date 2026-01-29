@@ -4,10 +4,11 @@
 
 - Import: 0
 - Extend: 6
-- Create: 10
-- Call: 20
-- Use: 63
-- Total: 99
+- Create: 5
+- Call: 22
+- Use: 64
+- Override: 0
+- Total: 97
 
 ## Extend edges
 
@@ -21,13 +22,8 @@
 ## Create edges
 
 - VideoClip.py/CLASSES/ImageClip/CONSTRUCTORS/__init__ (Constructor) -> VideoClip.py/CLASSES/ImageClip (Class)
-- VideoClip.py/CLASSES/VideoClip/METHODS/__matmul__ (Method) -> fx/Rotate.py/CLASSES/Rotate (Class)
-- VideoClip.py/CLASSES/VideoClip/METHODS/cropped (Method) -> fx/Crop.py/CLASSES/Crop (Class)
-- VideoClip.py/CLASSES/VideoClip/METHODS/resized (Method) -> fx/Resize.py/CLASSES/Resize (Class)
-- VideoClip.py/CLASSES/VideoClip/METHODS/rotated (Method) -> fx/Rotate.py/CLASSES/Rotate (Class)
 - VideoClip.py/CLASSES/VideoClip/METHODS/to_ImageClip (Method) -> VideoClip.py/CLASSES/ImageClip (Class)
 - VideoClip.py/CLASSES/VideoClip/METHODS/with_background_color (Method) -> VideoClip.py/CLASSES/ColorClip (Class)
-- VideoClip.py/CLASSES/VideoClip/METHODS/with_background_color (Method) -> compositing/CompositeVideoClip.py/CLASSES/CompositeVideoClip (Class)
 - VideoClip.py/CLASSES/VideoClip/METHODS/with_mask (Method) -> VideoClip.py/CLASSES/ColorClip (Class)
 - VideoClip.py/CLASSES/VideoClip/METHODS/with_mask (Method) -> VideoClip.py/CLASSES/VideoClip (Class)
 
@@ -48,10 +44,12 @@
 - VideoClip.py/CLASSES/UpdatedVideoClip/CONSTRUCTORS/__init__ (Constructor) -> VideoClip.py/CLASSES/VideoClip/CONSTRUCTORS/__init__ (Constructor)
 - VideoClip.py/CLASSES/VideoClip/METHODS/__and__ (Method) -> VideoClip.py/CLASSES/VideoClip/METHODS/with_mask (Method)
 - VideoClip.py/CLASSES/VideoClip/METHODS/show (Method) -> VideoClip.py/CLASSES/VideoClip/METHODS/show (Method)
-- VideoClip.py/CLASSES/VideoClip/METHODS/show (Method) -> io/ffmpeg_reader.py/CLASSES/FFMPEG_VideoReader/METHODS/get_frame (Method)
+- VideoClip.py/CLASSES/VideoClip/METHODS/to_ImageClip (Method) -> VideoClip.py/CLASSES/VideoClip/METHODS/to_ImageClip (Method)
 - VideoClip.py/CLASSES/VideoClip/METHODS/to_RGB (Method) -> VideoClip.py/CLASSES/VideoClip/METHODS/image_transform (Method)
 - VideoClip.py/CLASSES/VideoClip/METHODS/to_mask (Method) -> VideoClip.py/CLASSES/VideoClip/METHODS/image_transform (Method)
+- VideoClip.py/CLASSES/VideoClip/METHODS/with_background_color (Method) -> VideoClip.py/CLASSES/VideoClip/METHODS/to_ImageClip (Method)
 - VideoClip.py/CLASSES/VideoClip/METHODS/with_background_color (Method) -> VideoClip.py/CLASSES/VideoClip/METHODS/with_position (Method)
+- VideoClip.py/CLASSES/VideoClip/METHODS/with_opacity (Method) -> VideoClip.py/CLASSES/ImageClip/METHODS/image_transform (Method)
 - VideoClip.py/CLASSES/VideoClip/METHODS/write_images_sequence (Method) -> VideoClip.py/CLASSES/VideoClip/METHODS/save_frame (Method)
 
 ## Use edges
@@ -60,6 +58,7 @@
 - VideoClip.py/CLASSES/BitmapClip/CONSTRUCTORS/__init__ (Constructor) -> VideoClip.py/CLASSES/BitmapClip/FIELDS/color_dict (Field)
 - VideoClip.py/CLASSES/BitmapClip/CONSTRUCTORS/__init__ (Constructor) -> VideoClip.py/CLASSES/BitmapClip/FIELDS/fps (Field)
 - VideoClip.py/CLASSES/BitmapClip/CONSTRUCTORS/__init__ (Constructor) -> VideoClip.py/CLASSES/BitmapClip/FIELDS/total_frames (Field)
+- VideoClip.py/CLASSES/BitmapClip/FIELDS/color_dict (Field) -> VideoClip.py/CLASSES/BitmapClip/FIELDS/DEFAULT_COLOR_DICT (Field)
 - VideoClip.py/CLASSES/BitmapClip/METHODS/to_bitmap (Method) -> VideoClip.py/CLASSES/BitmapClip/FIELDS/color_dict (Field)
 - VideoClip.py/CLASSES/DataVideoClip/CONSTRUCTORS/__init__ (Constructor) -> VideoClip.py/CLASSES/DataVideoClip/FIELDS/data (Field)
 - VideoClip.py/CLASSES/DataVideoClip/CONSTRUCTORS/__init__ (Constructor) -> VideoClip.py/CLASSES/DataVideoClip/FIELDS/data_to_frame (Field)
@@ -119,3 +118,4 @@
 - VideoClip.py/CLASSES/VideoClip/METHODS/without_mask (Method) -> VideoClip.py/CLASSES/VideoClip/FIELDS/mask (Field)
 - VideoClip.py/CLASSES/VideoClip/METHODS/write_images_sequence (Method) -> VideoClip.py/CLASSES/VideoClip/FIELDS/duration (Field)
 - VideoClip.py/CLASSES/VideoClip/METHODS/write_videofile (Method) -> VideoClip.py/CLASSES/VideoClip/FIELDS/audio (Field)
+

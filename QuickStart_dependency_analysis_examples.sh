@@ -53,7 +53,7 @@ PYTHON_FLAGS=(
 echo "=== 1/4: Python Example - TrainTicketSystem TOY 1 ==="
 python3 tools/neodepends_python_export.py \
     --neodepends-bin "${NEODEPENDS_BIN}" \
-    --input "examples/TrainTicketSystem_TOY_PYTHON_FIRST/tts" \
+    --input "../../../000_TOY_EXAMPLES/canonical_examples/python/first/tts" \
     --output-dir "${OUTPUT_ROOT}/python_toy_first" \
     "${PYTHON_FLAGS[@]}"
 echo "✓ Python TOY 1 complete"
@@ -62,7 +62,7 @@ echo ""
 echo "=== 2/4: Python Example - TrainTicketSystem TOY 2 ==="
 python3 tools/neodepends_python_export.py \
     --neodepends-bin "${NEODEPENDS_BIN}" \
-    --input "examples/TrainTicketSystem_TOY_PYTHON_SECOND/tts" \
+    --input "../../../000_TOY_EXAMPLES/canonical_examples/python/second/tts" \
     --output-dir "${OUTPUT_ROOT}/python_toy_second" \
     "${PYTHON_FLAGS[@]}"
 echo "✓ Python TOY 2 complete"
@@ -76,7 +76,7 @@ echo "=== 3/4: Java Example - TrainTicketSystem TOY 1 ==="
 mkdir -p "${OUTPUT_ROOT}/java_toy_first"
 
 "${NEODEPENDS_BIN}" \
-    --input "examples/TrainTicketSystem_TOY_JAVA_FIRST/src" \
+    --input "../../../000_TOY_EXAMPLES/canonical_examples/java/first/src" \
     --output "${OUTPUT_ROOT}/java_toy_first/dependencies.db" \
     --format sqlite \
     --resources entities,deps,contents \
@@ -97,7 +97,7 @@ echo "=== 4/4: Java Example - TrainTicketSystem TOY 2 ==="
 mkdir -p "${OUTPUT_ROOT}/java_toy_second"
 
 "${NEODEPENDS_BIN}" \
-    --input "examples/TrainTicketSystem_TOY_JAVA_SECOND/src" \
+    --input "../../../000_TOY_EXAMPLES/canonical_examples/java/second/src" \
     --output "${OUTPUT_ROOT}/java_toy_second/dependencies.db" \
     --format sqlite \
     --resources entities,deps,contents \

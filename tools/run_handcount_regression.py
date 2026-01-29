@@ -218,8 +218,10 @@ def main() -> int:
                 name="large_single_file",
                 input_path=repo_root / "examples/Large_Single_File_PYTHON_videoclip",
                 lang="python",
-                handcount=None,
+                handcount=repo_root
+                / "examples/examples_testing/Py/DEPS_GROUND_TRUTH_HANDCOUNTS/Large_Single_File_PYTHON_videoclip/handcount_edges.heuristic.json",
                 normalize_professor=True,
+                exclude_prefixes=exclude_handcount,
             ),
         ]
     )
