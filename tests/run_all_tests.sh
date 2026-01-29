@@ -22,6 +22,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Auto-detect TOY_ROOT if not set (local dev convenience)
+if [ -z "$TOY_ROOT" ]; then
+    for candidate in \
+        "$REPO_ROOT/../../../../000_TOY_EXAMPLES/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG" \
+        "$REPO_ROOT/../../000_TOY_EXAMPLES/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG" \
+        "$REPO_ROOT/../000_TOY_EXAMPLES/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG"; do
+        if [ -d "$candidate" ]; then
+            TOY_ROOT="$candidate"
+            export TOY_ROOT
+            break
+        fi
+    done
+fi
+
 # Test output directory
 TEST_OUTPUT="$SCRIPT_DIR/test_output"
 rm -rf "$TEST_OUTPUT"
@@ -497,7 +511,12 @@ REPORT_LINES+=("")
 log_test "QuickStart Examples - All 4 examples run successfully"
 
 CANONICAL_EXAMPLES_PATH="../../../000_TOY_EXAMPLES/canonical_examples"
-if [ -x "./QuickStart_dependency_analysis_examples.sh" ] && [ -d "$CANONICAL_EXAMPLES_PATH" ]; then
+HAS_MULTILANG_TOY="false"
+if [ -n "$TOY_ROOT" ] && [ -d "$TOY_ROOT/python/first_godclass_antipattern" ]; then
+    HAS_MULTILANG_TOY="true"
+fi
+
+if [ -x "./QuickStart_dependency_analysis_examples.sh" ] && { [ -d "$CANONICAL_EXAMPLES_PATH" ] || [ "$HAS_MULTILANG_TOY" = "true" ]; }; then
     log_info "Running QuickStart examples..."
     ./QuickStart_dependency_analysis_examples.sh > "$TEST_OUTPUT/quickstart.log" 2>&1
 else

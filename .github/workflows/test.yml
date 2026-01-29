@@ -45,6 +45,13 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Fetch TOY examples (optional)
+        if: runner.os == 'Linux' && env.TOY_REPO_URL != ''
+        shell: bash
+        run: |
+          git clone --depth 1 --branch main "$TOY_REPO_URL" /tmp/toy
+          echo "TOY_ROOT=/tmp/toy" >> "$GITHUB_ENV"
+
       - name: Run tests (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -57,12 +64,6 @@ jobs:
         shell: pwsh
         run: |
           .\tests\run_all_tests.ps1
-
-      - name: Fetch TOY examples (optional)
-        if: runner.os == 'Linux' && env.TOY_REPO_URL != ''
-        shell: bash
-        run: |
-          git clone --depth 1 --branch main "$TOY_REPO_URL" /tmp/toy
 
       - name: Example comparison (Linux)
         if: runner.os == 'Linux'

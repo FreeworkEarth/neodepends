@@ -39,6 +39,42 @@ if (Test-Path ".\neodepends.exe") {
 Write-Host "Using NeoDepends binary: $NeodependsBin"
 Write-Host ""
 
+# Resolve toy example paths (multilang preferred)
+$ToyRootResolved = $env:TOY_ROOT
+if (-not $ToyRootResolved) {
+    $Candidates = @(
+        (Join-Path $ScriptDir "..\..\..\..\000_TOY_EXAMPLES\ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG"),
+        (Join-Path $ScriptDir "..\..\..\000_TOY_EXAMPLES\ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG")
+    )
+    foreach ($c in $Candidates) {
+        if (Test-Path $c) {
+            $ToyRootResolved = (Resolve-Path $c).Path
+            break
+        }
+    }
+}
+
+if ($ToyRootResolved -and (Test-Path (Join-Path $ToyRootResolved "python\\first_godclass_antipattern"))) {
+    Write-Host "Using multilang TOY examples: $ToyRootResolved"
+    $PythonToy1 = Join-Path $ToyRootResolved "python\\first_godclass_antipattern"
+    $PythonToy2 = Join-Path $ToyRootResolved "python\\second_repository_refactored"
+    $JavaToy1 = Join-Path $ToyRootResolved "java\\first_godclass_antipattern"
+    $JavaToy2 = Join-Path $ToyRootResolved "java\\second_repository_refactored"
+} else {
+    $CanonicalRoot = Join-Path $ScriptDir "..\..\..\000_TOY_EXAMPLES\canonical_examples"
+    if (Test-Path (Join-Path $CanonicalRoot "python\\first\\tts")) {
+        Write-Host "Using canonical TOY examples: $CanonicalRoot"
+        $PythonToy1 = Join-Path $CanonicalRoot "python\\first\\tts"
+        $PythonToy2 = Join-Path $CanonicalRoot "python\\second\\tts"
+        $JavaToy1 = Join-Path $CanonicalRoot "java\\first\\src"
+        $JavaToy2 = Join-Path $CanonicalRoot "java\\second\\src"
+    } else {
+        Write-Host "ERROR: Toy examples not found." -ForegroundColor Red
+        Write-Host "Set TOY_ROOT to the multilang repo: ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG"
+        exit 1
+    }
+}
+
 # ============================================================================
 # PYTHON EXAMPLES (using StackGraphs AST resolver)
 # ============================================================================
@@ -54,7 +90,7 @@ $PythonFlags = @(
 Write-Host "=== 1/4: Python Example - TrainTicketSystem TOY 1 ==="
 & py -3 tools\neodepends_python_export.py `
     --neodepends-bin $NeodependsBin `
-    --input "..\..\..\000_TOY_EXAMPLES\canonical_examples\python\first\tts" `
+    --input $PythonToy1 `
     --output-dir "$OutputRoot\python_toy_first" `
     @PythonFlags
 Write-Host "✓ Python TOY 1 complete"
@@ -63,7 +99,7 @@ Write-Host ""
 Write-Host "=== 2/4: Python Example - TrainTicketSystem TOY 2 ==="
 & py -3 tools\neodepends_python_export.py `
     --neodepends-bin $NeodependsBin `
-    --input "..\..\..\000_TOY_EXAMPLES\canonical_examples\python\second\tts" `
+    --input $PythonToy2 `
     --output-dir "$OutputRoot\python_toy_second" `
     @PythonFlags
 Write-Host "✓ Python TOY 2 complete"
@@ -77,7 +113,7 @@ Write-Host "=== 3/4: Java Example - TrainTicketSystem TOY 1 ==="
 New-Item -ItemType Directory -Force -Path "$OutputRoot\java_toy_first" | Out-Null
 
 & $NeodependsBin `
-    --input "..\..\..\000_TOY_EXAMPLES\canonical_examples\java\first\src" `
+    --input $JavaToy1 `
     --output "$OutputRoot\java_toy_first\dependencies.db" `
     --format sqlite `
     --resources entities,deps,contents `
@@ -98,7 +134,7 @@ Write-Host "=== 4/4: Java Example - TrainTicketSystem TOY 2 ==="
 New-Item -ItemType Directory -Force -Path "$OutputRoot\java_toy_second" | Out-Null
 
 & $NeodependsBin `
-    --input "..\..\..\000_TOY_EXAMPLES\canonical_examples\java\second\src" `
+    --input $JavaToy2 `
     --output "$OutputRoot\java_toy_second\dependencies.db" `
     --format sqlite `
     --resources entities,deps,contents `
