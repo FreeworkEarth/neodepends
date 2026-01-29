@@ -12,7 +12,7 @@ jobs:
     name: Run Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     env:
-      TOY_REPO_URL: "https://github.com/FreeworkEarth/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES.git"
+      TOY_REPO_URL: "https://github.com/FreeworkEarth/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG.git"
     strategy:
       fail-fast: false
       matrix:
