@@ -17,6 +17,7 @@ class Case:
     handcount: Optional[Path] = None
     normalize_professor: bool = False
     normalize_java: bool = False
+    normalize_java_decl_site: bool = False
     strip_prefixes: Optional[List[str]] = None
     exclude_prefixes: Optional[List[str]] = None
     enforce: bool = False  # fail on diff for this case
@@ -86,6 +87,8 @@ def _run_compare(
         cmd.append("--normalize-neodepends-professor")
     if case.normalize_java:
         cmd.append("--normalize-java-handcount")
+    if case.normalize_java_decl_site:
+        cmd.append("--normalize-java-declaration-site")
     for p in case.strip_prefixes or []:
         cmd += ["--strip-prefix", p]
     for p in case.exclude_prefixes or []:
@@ -174,6 +177,7 @@ def main() -> int:
                     handcount=gt_root
                     / "java/first_godclass_antipattern/DEPS__GROUND_TRUTH_HANDCOUNT/handcount_edges.heuristic.json",
                     normalize_java=True,
+                    normalize_java_decl_site=True,
                     enforce=False,
                 ),
                 Case(
@@ -183,6 +187,7 @@ def main() -> int:
                     handcount=gt_root
                     / "java/second_repository_refactored/DEPS__GROUND_TRUTH_HANDCOUNT/handcount_edges.heuristic.json",
                     normalize_java=True,
+                    normalize_java_decl_site=True,
                     enforce=False,
                 ),
             ]

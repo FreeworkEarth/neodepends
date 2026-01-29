@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 
 Edge = Tuple[str, str, str]
@@ -215,6 +215,140 @@ def _maybe_normalize_java(edges: Set[Edge], *, normalize_java: bool) -> Set[Edge
     return out
 
 
+def _java_parse_entity(name: str) -> Optional[Dict[str, str]]:
+    if ".java/" not in name:
+        return None
+    file_part, rest = name.split(".java/", 1)
+    file_part = file_part + ".java"
+
+    kind = None
+    class_path = None
+    member = None
+
+    if "/methods/" in rest:
+        class_path, member = rest.split("/methods/", 1)
+        kind = "Method"
+    elif "/fields/" in rest:
+        class_path, member = rest.split("/fields/", 1)
+        kind = "Field"
+    elif "/constructors/" in rest:
+        class_path, member = rest.split("/constructors/", 1)
+        kind = "Constructor"
+    elif rest.endswith(" (Class)"):
+        class_path = rest[: -len(" (Class)")]
+        kind = "Class"
+    elif rest.endswith(" (Module)") or rest.endswith(" (File)"):
+        kind = "Module"
+        class_path = None
+
+    if kind is None:
+        return None
+
+    if member is not None and " (" in member:
+        member = member.split(" (", 1)[0]
+
+    return {
+        "file": file_part,
+        "class": class_path or "",
+        "kind": kind,
+        "member": member or "",
+    }
+
+
+def _normalize_java_declaration_site(edges: Set[Edge]) -> Set[Edge]:
+    if not edges:
+        return edges
+
+    # Build inheritance map from Extend edges
+    bases_by_class: Dict[str, List[str]] = defaultdict(list)
+    class_files: Dict[str, str] = {}
+    class_methods: Dict[str, Set[str]] = defaultdict(set)
+    class_fields: Dict[str, Set[str]] = defaultdict(set)
+
+    def register_entity(name: str) -> None:
+        info = _java_parse_entity(name)
+        if not info:
+            return
+        cls = info["class"]
+        if not cls:
+            return
+        class_files.setdefault(cls, info["file"])
+        if info["kind"] == "Class":
+            return
+        if info["kind"] == "Method":
+            class_methods[cls].add(info["member"])
+        elif info["kind"] == "Field":
+            class_fields[cls].add(info["member"])
+
+    for s, t, k in edges:
+        register_entity(s)
+        register_entity(t)
+        if k != "Extend":
+            continue
+        src_info = _java_parse_entity(s)
+        tgt_info = _java_parse_entity(t)
+        if not src_info or not tgt_info:
+            continue
+        if src_info["kind"] == "Class" and tgt_info["kind"] == "Class":
+            bases_by_class[src_info["class"]].append(tgt_info["class"])
+
+    def resolve_decl_class(cls: str, kind: str, member: str) -> str:
+        if not cls or not member:
+            return cls
+        if kind == "Method":
+            candidates = class_methods
+        elif kind == "Field":
+            candidates = class_fields
+        else:
+            return cls
+
+        seen: Set[str] = set()
+        queue: List[str] = list(bases_by_class.get(cls, []))
+        while queue:
+            cur = queue.pop(0)
+            if cur in seen:
+                continue
+            seen.add(cur)
+            if member in candidates.get(cur, set()):
+                return cur
+            queue.extend(bases_by_class.get(cur, []))
+        return cls
+
+    def rebuild(info: Dict[str, str], decl_cls: str) -> str:
+        file_part = class_files.get(decl_cls, info["file"])
+        if info["kind"] == "Method":
+            return f"{file_part}/{decl_cls}/methods/{info['member']} (Method)"
+        if info["kind"] == "Field":
+            return f"{file_part}/{decl_cls}/fields/{info['member']} (Field)"
+        return f"{file_part}/{decl_cls} (Class)"
+
+    out: Set[Edge] = set()
+    for s, t, k in edges:
+        s_info = _java_parse_entity(s)
+        t_info = _java_parse_entity(t)
+        new_s = s
+        new_t = t
+        if s_info and s_info["kind"] in {"Method", "Field"}:
+            decl = resolve_decl_class(s_info["class"], s_info["kind"], s_info["member"])
+            if decl != s_info["class"]:
+                new_s = rebuild(s_info, decl)
+        if t_info and t_info["kind"] in {"Method", "Field"}:
+            decl = resolve_decl_class(t_info["class"], t_info["kind"], t_info["member"])
+            if decl != t_info["class"]:
+                new_t = rebuild(t_info, decl)
+        out.add((new_s, new_t, k))
+    return out
+
+
+def _maybe_normalize_java_decl_site(edges: Set[Edge], *, normalize_decl_site: bool) -> Set[Edge]:
+    if not normalize_decl_site:
+        return edges
+    looks_java = any(".java/" in s or ".java/" in t for s, t, _k in edges)
+    if not looks_java:
+        return edges
+    return _normalize_java_declaration_site(edges)
+
+
 def _maybe_normalize_neodepends(edges: Set[Edge], *, normalize_professor: bool) -> Set[Edge]:
     if not normalize_professor:
         return edges
@@ -286,6 +420,12 @@ def main() -> int:
         help="Normalize Java naming differences (drop /self for classes and collapse inner-class paths) on both ground truth and NeoDepends edges.",
     )
     parser.add_argument(
+        "--normalize-java-declaration-site",
+        action="store_true",
+        default=False,
+        help="Normalize Java method/field targets to declaration-site using Extend edges (aligns handcount to Depends resolution).",
+    )
+    parser.add_argument(
         "--strip-prefix",
         action="append",
         default=None,
@@ -304,6 +444,8 @@ def main() -> int:
     nd = _maybe_normalize_neodepends(nd, normalize_professor=bool(args.normalize_neodepends_professor))
     gt = _maybe_normalize_java(gt, normalize_java=bool(args.normalize_java_handcount))
     nd = _maybe_normalize_java(nd, normalize_java=bool(args.normalize_java_handcount))
+    gt = _maybe_normalize_java_decl_site(gt, normalize_decl_site=bool(args.normalize_java_declaration_site))
+    nd = _maybe_normalize_java_decl_site(nd, normalize_decl_site=bool(args.normalize_java_declaration_site))
     prefixes = _expand_prefixes(args.strip_prefix)
     if prefixes:
         gt = _maybe_strip_prefixes(gt, prefixes)

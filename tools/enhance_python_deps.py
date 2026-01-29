@@ -150,6 +150,7 @@ class _MethodBodyFacts(ast.NodeVisitor):
     def __init__(self, known_classes: Set[str]):
         self.known_classes = known_classes
         self.self_attrs: Set[str] = set()
+        self.field_assign_uses: Set[Tuple[str, str]] = set()
         self.class_attr_uses: Set[Tuple[str, str]] = set()
         self.class_calls: Set[Tuple[str, str]] = set()
         self.self_calls: Set[str] = set()
@@ -158,6 +159,14 @@ class _MethodBodyFacts(ast.NodeVisitor):
         self.creates: Set[str] = set()
         self.cls_create: bool = False
         self.env: Dict[str, str] = {}
+
+    @staticmethod
+    def _collect_self_attrs(node: ast.AST) -> Set[str]:
+        attrs: Set[str] = set()
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Attribute) and isinstance(sub.value, ast.Name) and sub.value.id == "self":
+                attrs.add(sub.attr)
+        return attrs
 
     def visit_Attribute(self, node: ast.Attribute):
         if isinstance(node.value, ast.Name) and node.value.id == "self":
@@ -168,6 +177,21 @@ class _MethodBodyFacts(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign):
+        # self.field = ... self.other_field ...
+        targets = [
+            t for t in node.targets
+            if isinstance(t, ast.Attribute)
+            and isinstance(t.value, ast.Name)
+            and t.value.id == "self"
+        ]
+        if targets:
+            rhs_attrs = self._collect_self_attrs(node.value)
+            if rhs_attrs:
+                for t in targets:
+                    for src in rhs_attrs:
+                        if src != t.attr:
+                            self.field_assign_uses.add((t.attr, src))
+
         # var = ClassName(...)
         if (
             len(node.targets) == 1
@@ -189,6 +213,33 @@ class _MethodBodyFacts(ast.NodeVisitor):
                 base = node.value.func.value.id
                 if base in self.known_classes and node.value.func.attr == "get_instance":
                     self.env[var] = base
+        self.generic_visit(node)
+
+    def visit_AugAssign(self, node: ast.AugAssign):
+        # self.field += self.other_field
+        if (
+            isinstance(node.target, ast.Attribute)
+            and isinstance(node.target.value, ast.Name)
+            and node.target.value.id == "self"
+        ):
+            rhs_attrs = self._collect_self_attrs(node.value)
+            for src in rhs_attrs:
+                if src != node.target.attr:
+                    self.field_assign_uses.add((node.target.attr, src))
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign):
+        # self.field: type = ... self.other_field ...
+        if (
+            isinstance(node.target, ast.Attribute)
+            and isinstance(node.target.value, ast.Name)
+            and node.target.value.id == "self"
+            and node.value is not None
+        ):
+            rhs_attrs = self._collect_self_attrs(node.value)
+            for src in rhs_attrs:
+                if src != node.target.attr:
+                    self.field_assign_uses.add((node.target.attr, src))
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
@@ -396,6 +447,7 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
     print(f"Import deps added: {import_added}")
 
     new_deps_count = 0
+    field_field_deps_added = 0
     methods_analyzed = 0
 
     # Index classes
@@ -724,6 +776,24 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
             if used_fields:
                 print(f"  {method_name} -> {_compress_field_hits(used_fields)} (Use)")
 
+        # (A1) Field -> Field Use edges for self.<field> assignments that reference other fields.
+        if owner_cls_id is not None and facts.field_assign_uses:
+            for tgt_name, src_name in sorted(facts.field_assign_uses):
+                tgt_fid = resolve_inherited_field(owner_cls_id, tgt_name)
+                src_fid = resolve_inherited_field(owner_cls_id, src_name)
+                if tgt_fid is None or src_fid is None:
+                    continue
+                key = (tgt_fid, src_fid, "Use")
+                if key in existing:
+                    continue
+                cursor.execute(
+                    "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Use', ?, NULL)",
+                    (tgt_fid, src_fid, method_start),
+                )
+                existing.add(key)
+                new_deps_count += 1
+                field_field_deps_added += 1
+
         # (B) self.method(...) -> Call to resolved method entity.
         if owner_cls_id is not None:
             for callee in sorted(facts.self_calls):
@@ -959,6 +1029,8 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
                             print(f"  {child_name}.{abstract_method_name} -> {parent_name}.{abstract_method_name} (Override)")
 
     print(f"\n[OK] Added {override_deps_count} Override dependencies")
+    if field_field_deps_added:
+        print(f"[OK] Added {field_field_deps_added} Field->Field Use dependencies")
 
     conn.commit()
     conn.close()
@@ -1124,8 +1196,8 @@ def fix_field_parent_ids(db_path: str) -> int:
     conn.close()
     return updated_count
 
-def verify_enhancement(db_path: str):
-    """Verify that Method->Field dependencies were added."""
+def verify_enhancement(db_path: str) -> Tuple[int, int]:
+    """Verify that Method->Field and Field->Field dependencies were added."""
     conn = sqlite3.Connection(db_path)
     cursor = conn.cursor()
 
@@ -1139,6 +1211,16 @@ def verify_enhancement(db_path: str):
     """)
 
     method_field_count = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM deps d
+        JOIN entities e_src ON d.src = e_src.id
+        JOIN entities e_tgt ON d.tgt = e_tgt.id
+        WHERE e_src.kind = 'Field' AND e_tgt.kind = 'Field' AND d.kind = 'Use'
+    """)
+
+    field_field_count = cursor.fetchone()[0]
 
     # Show dependency breakdown
     cursor.execute("""
@@ -1163,7 +1245,7 @@ def verify_enhancement(db_path: str):
 
     conn.close()
 
-    return method_field_count
+    return method_field_count, field_field_count
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -1205,11 +1287,12 @@ def main() -> int:
     fields_fixed = fix_field_parent_ids(db_path)
 
     # Step 3: Verify
-    method_field_count = verify_enhancement(db_path)
+    method_field_count, field_field_count = verify_enhancement(db_path)
 
     print(f"\n{'='*70}")
     print("COMPLETE SUCCESS!")
     print(f"  - {method_field_count} Method->Field dependencies created")
+    print(f"  - {field_field_count} Field->Field dependencies created")
     print(f"  - {override_count} Override dependencies created")
     print(f"  - {fields_fixed} fields now siblings with methods")
     print(f"  - Database ready for Deicide hierarchical clustering!")
