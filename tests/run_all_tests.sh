@@ -92,7 +92,7 @@ echo "Test Output: $TEST_OUTPUT"
 echo "Report: $REPORT_FILE"
 echo ""
 
-# Optional: run handcount regression (toy + survey + moviepy if available)
+# Optional: run example comparison (toy + survey + moviepy if available)
 # Set TOY_ROOT to enable toy comparisons:
 #   export TOY_ROOT=/path/to/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG
 if [ -f "tools/run_handcount_regression.py" ]; then
@@ -104,7 +104,7 @@ if [ -f "tools/run_handcount_regression.py" ]; then
     else
         log_info "TOY_ROOT not set; toy handcount comparisons will be skipped"
     fi
-    log_test "Handcount Regression (diffs always generated)"
+    log_test "Example Comparison (diffs always generated)"
     if python3 tools/run_handcount_regression.py \
         --neodepends-bin "$NEODEPENDS_BIN" \
         --depends-jar artifacts/depends.jar \

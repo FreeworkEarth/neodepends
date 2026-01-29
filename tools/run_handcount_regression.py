@@ -267,9 +267,58 @@ def main() -> int:
         else:
             summary.append({"case": case.name, "missing": None, "extra": None, "diff_json": None})
 
-    summary_path = out_base / "handcount_summary.json"
+    def fmt_ratio(value: float | None) -> str:
+        if value is None:
+            return "-"
+        return f"{value * 100:.1f}%"
+
+    def status_for(entry: dict) -> str:
+        if entry.get("ground_truth_count") in (None, 0):
+            return "SKIP"
+        if args.tolerance is None:
+            return "OK"
+        diff_ratio = entry.get("diff_ratio")
+        if diff_ratio is None:
+            return "SKIP"
+        return "FAIL" if diff_ratio > args.tolerance else "OK"
+
+    # Write JSON summaries (new + backwards-compatible)
+    summary_path = out_base / "example_comparison_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2))
-    print(f"\n[OK] Summary: {summary_path}")
+    legacy_path = out_base / "handcount_summary.json"
+    legacy_path.write_text(json.dumps(summary, indent=2))
+
+    # Write a markdown summary table for quick review
+    md_lines = [
+        "# Example Comparison Summary",
+        "",
+        "| Case | Ground Truth | NeoDepends | Missing | Extra | Diff% | Status |",
+        "| --- | ---:| ---:| ---:| ---:| ---:| --- |",
+    ]
+    for entry in summary:
+        md_lines.append(
+            "| {case} | {gt} | {nd} | {missing} | {extra} | {diff} | {status} |".format(
+                case=entry["case"],
+                gt=entry.get("ground_truth_count", "-"),
+                nd=entry.get("neodepends_count", "-"),
+                missing=entry.get("missing", "-"),
+                extra=entry.get("extra", "-"),
+                diff=fmt_ratio(entry.get("diff_ratio")),
+                status=status_for(entry),
+            )
+        )
+    md_path = out_base / "example_comparison_summary.md"
+    md_path.write_text("\n".join(md_lines))
+
+    # Print a compact summary to stdout
+    print("\n=== Example Comparison Summary ===")
+    for entry in summary:
+        print(
+            f"- {entry['case']}: missing={entry.get('missing')} extra={entry.get('extra')} "
+            f"diff={fmt_ratio(entry.get('diff_ratio'))} status={status_for(entry)}"
+        )
+    print(f"\n[OK] Summary JSON: {summary_path}")
+    print(f"[OK] Summary Markdown: {md_path}")
 
     if failures:
         print(f"[FAIL] Differences found in: {', '.join(failures)}")
