@@ -53,6 +53,22 @@ else
     done
 fi
 
+if [ -z "$TOY_ROOT_RESOLVED" ] || [ ! -d "$TOY_ROOT_RESOLVED/python/first_godclass_antipattern" ]; then
+    TOY_REPO_URL="${TOY_REPO_URL:-https://github.com/FreeworkEarth/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG.git}"
+    TOY_CLONE_DIR="/tmp/neodepends_toy"
+    if command -v git >/dev/null 2>&1; then
+        if [ -d "$TOY_CLONE_DIR/.git" ]; then
+            (cd "$TOY_CLONE_DIR" && git fetch --depth 1 origin main && git reset --hard origin/main) >/dev/null 2>&1 || true
+        else
+            rm -rf "$TOY_CLONE_DIR"
+            git clone --depth 1 --branch main "$TOY_REPO_URL" "$TOY_CLONE_DIR" >/dev/null 2>&1 || true
+        fi
+        if [ -d "$TOY_CLONE_DIR/python/first_godclass_antipattern" ]; then
+            TOY_ROOT_RESOLVED="$TOY_CLONE_DIR"
+        fi
+    fi
+fi
+
 if [ -n "$TOY_ROOT_RESOLVED" ] && [ -d "$TOY_ROOT_RESOLVED/python/first_godclass_antipattern" ]; then
     echo "Using multilang TOY examples: $TOY_ROOT_RESOLVED"
     PYTHON_TOY_1="$TOY_ROOT_RESOLVED/python/first_godclass_antipattern"

@@ -65,6 +65,15 @@ if (Test-Path ".\neodepends.exe") {
     exit 1
 }
 
+# Resolve Python executable
+$PythonExe = (Get-Command python -ErrorAction SilentlyContinue)
+if (-not $PythonExe) {
+    Write-Host "ERROR: python not found in PATH." -ForegroundColor Red
+    Write-Host "Install Python or ensure actions/setup-python is configured."
+    exit 1
+}
+$PythonExe = $PythonExe.Source
+
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║  NeoDepends Python Extension Release Test Suite               ║" -ForegroundColor Green
@@ -74,6 +83,67 @@ Write-Host "Repository: $RepoRoot"
 Write-Host "Binary: $NeodependsBin"
 Write-Host "Test Output: $TestOutput"
 Write-Host ""
+
+# Auto-detect or auto-clone TOY repo for comparisons
+$ToyRoot = $env:TOY_ROOT
+if (-not $ToyRoot) {
+    $Candidates = @(
+        (Join-Path $RepoRoot "..\\..\\..\\..\\000_TOY_EXAMPLES\\ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG"),
+        (Join-Path $RepoRoot "..\\..\\000_TOY_EXAMPLES\\ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG"),
+        (Join-Path $RepoRoot "..\\000_TOY_EXAMPLES\\ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG")
+    )
+    foreach ($c in $Candidates) {
+        if (Test-Path $c) {
+            $ToyRoot = (Resolve-Path $c).Path
+            break
+        }
+    }
+}
+if (-not $ToyRoot) {
+    $ToyRepoUrl = $env:TOY_REPO_URL
+    if (-not $ToyRepoUrl) {
+        $ToyRepoUrl = "https://github.com/FreeworkEarth/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG.git"
+    }
+    $ToyCloneDir = Join-Path $env:TEMP "neodepends_toy"
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        if (Test-Path (Join-Path $ToyCloneDir ".git")) {
+            git -C $ToyCloneDir fetch --depth 1 origin main | Out-Null
+            git -C $ToyCloneDir reset --hard origin/main | Out-Null
+        } else {
+            if (Test-Path $ToyCloneDir) { Remove-Item -Recurse -Force $ToyCloneDir }
+            git clone --depth 1 --branch main $ToyRepoUrl $ToyCloneDir | Out-Null
+        }
+    }
+    if (Test-Path (Join-Path $ToyCloneDir "python\\first_godclass_antipattern")) {
+        $ToyRoot = (Resolve-Path $ToyCloneDir).Path
+    }
+}
+if ($ToyRoot -and (Test-Path (Join-Path $ToyRoot "python\\first_godclass_antipattern"))) {
+    $env:TOY_ROOT = $ToyRoot
+    Log-Info "Using TOY_ROOT=$ToyRoot"
+} else {
+    Log-Info "TOY_ROOT not set; toy handcount comparisons will be skipped (survey/moviepy/large_single_file still run)"
+}
+
+# Optional: run example comparison (toy + survey + moviepy if available)
+if (Test-Path "tools\\run_handcount_regression.py") {
+    $HandcountOut = Join-Path $TestOutput "handcount_regression"
+    $ToyArgs = @()
+    if ($env:TOY_ROOT -and (Test-Path $env:TOY_ROOT)) {
+        $ToyArgs = @("--toy-root", $env:TOY_ROOT)
+    }
+    Log-Test "Example Comparison (diffs always generated)"
+    & $PythonExe "tools\\run_handcount_regression.py" `
+        --neodepends-bin $NeodependsBin `
+        --depends-jar "artifacts\\depends.jar" `
+        --output-dir $HandcountOut `
+        @ToyArgs
+    if ($LASTEXITCODE -eq 0) {
+        Log-Pass "Handcount regression completed"
+    } else {
+        Log-Fail "Handcount regression failed"
+    }
+}
 
 # ============================================================================
 # TEST 1: Unicode Fix - Check enhance_python_deps.py has no Unicode arrows

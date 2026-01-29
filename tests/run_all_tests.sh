@@ -22,8 +22,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-# Auto-detect TOY_ROOT if not set (local dev convenience)
-if [ -z "$TOY_ROOT" ]; then
+# Auto-detect or auto-clone TOY repo if not set (local dev convenience)
+if [ -z "${TOY_ROOT:-}" ]; then
     for candidate in \
         "$REPO_ROOT/../../../../000_TOY_EXAMPLES/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG" \
         "$REPO_ROOT/../../000_TOY_EXAMPLES/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG" \
@@ -34,6 +34,23 @@ if [ -z "$TOY_ROOT" ]; then
             break
         fi
     done
+fi
+
+if [ -z "${TOY_ROOT:-}" ]; then
+    TOY_REPO_URL="${TOY_REPO_URL:-https://github.com/FreeworkEarth/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG.git}"
+    TOY_CLONE_DIR="/tmp/neodepends_toy"
+    if command -v git >/dev/null 2>&1; then
+        if [ -d "$TOY_CLONE_DIR/.git" ]; then
+            (cd "$TOY_CLONE_DIR" && git fetch --depth 1 origin main && git reset --hard origin/main) >/dev/null 2>&1 || true
+            TOY_ROOT="$TOY_CLONE_DIR"
+        else
+            rm -rf "$TOY_CLONE_DIR"
+            git clone --depth 1 --branch main "$TOY_REPO_URL" "$TOY_CLONE_DIR" >/dev/null 2>&1 && TOY_ROOT="$TOY_CLONE_DIR"
+        fi
+    fi
+    if [ -n "${TOY_ROOT:-}" ]; then
+        export TOY_ROOT
+    fi
 fi
 
 # Test output directory
@@ -116,7 +133,7 @@ if [ -f "tools/run_handcount_regression.py" ]; then
         TOY_ARGS+=(--toy-root "$TOY_ROOT")
         log_info "Using TOY_ROOT=$TOY_ROOT"
     else
-        log_info "TOY_ROOT not set; toy handcount comparisons will be skipped"
+        log_info "TOY_ROOT not set; toy handcount comparisons will be skipped (survey/moviepy/large_single_file still run)"
     fi
     log_test "Example Comparison (diffs always generated)"
     if python3 tools/run_handcount_regression.py \
