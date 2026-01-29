@@ -111,7 +111,7 @@ def main() -> int:
         "--tolerance",
         type=float,
         default=None,
-        help="Fail if (missing+extra)/ground_truth_count exceeds this threshold (e.g. 0.05 for 5%)",
+        help="Fail if (missing+extra)/ground_truth_count exceeds this threshold (e.g. 0.05 for 5%%)",
     )
     args = parser.parse_args()
 
