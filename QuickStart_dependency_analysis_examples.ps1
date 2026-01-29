@@ -39,6 +39,15 @@ if (Test-Path ".\neodepends.exe") {
 Write-Host "Using NeoDepends binary: $NeodependsBin"
 Write-Host ""
 
+# Resolve Python executable (avoid reliance on py launcher in CI)
+$PythonExe = (Get-Command python -ErrorAction SilentlyContinue)
+if (-not $PythonExe) {
+    Write-Host "ERROR: python not found in PATH." -ForegroundColor Red
+    Write-Host "Install Python or ensure actions/setup-python is configured."
+    exit 1
+}
+$PythonExe = $PythonExe.Source
+
 # Resolve toy example paths (multilang preferred)
 $ToyRootResolved = $env:TOY_ROOT
 if (-not $ToyRootResolved) {
@@ -51,6 +60,26 @@ if (-not $ToyRootResolved) {
             $ToyRootResolved = (Resolve-Path $c).Path
             break
         }
+    }
+}
+
+if (-not ($ToyRootResolved -and (Test-Path (Join-Path $ToyRootResolved "python\\first_godclass_antipattern")))) {
+    $ToyRepoUrl = $env:TOY_REPO_URL
+    if (-not $ToyRepoUrl) {
+        $ToyRepoUrl = "https://github.com/FreeworkEarth/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG.git"
+    }
+    $ToyCloneDir = Join-Path $env:TEMP "neodepends_toy"
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        if (Test-Path (Join-Path $ToyCloneDir ".git")) {
+            git -C $ToyCloneDir fetch --depth 1 origin main | Out-Null
+            git -C $ToyCloneDir reset --hard origin/main | Out-Null
+        } else {
+            if (Test-Path $ToyCloneDir) { Remove-Item -Recurse -Force $ToyCloneDir }
+            git clone --depth 1 --branch main $ToyRepoUrl $ToyCloneDir | Out-Null
+        }
+    }
+    if (Test-Path (Join-Path $ToyCloneDir "python\\first_godclass_antipattern")) {
+        $ToyRootResolved = (Resolve-Path $ToyCloneDir).Path
     }
 }
 
@@ -88,20 +117,22 @@ $PythonFlags = @(
 )
 
 Write-Host "=== 1/4: Python Example - TrainTicketSystem TOY 1 ==="
-& py -3 tools\neodepends_python_export.py `
+& $PythonExe tools\neodepends_python_export.py `
     --neodepends-bin $NeodependsBin `
     --input $PythonToy1 `
     --output-dir "$OutputRoot\python_toy_first" `
     @PythonFlags
+if ($LASTEXITCODE -ne 0) { throw "Python TOY 1 failed (neodepends_python_export.py)" }
 Write-Host "✓ Python TOY 1 complete"
 Write-Host ""
 
 Write-Host "=== 2/4: Python Example - TrainTicketSystem TOY 2 ==="
-& py -3 tools\neodepends_python_export.py `
+& $PythonExe tools\neodepends_python_export.py `
     --neodepends-bin $NeodependsBin `
     --input $PythonToy2 `
     --output-dir "$OutputRoot\python_toy_second" `
     @PythonFlags
+if ($LASTEXITCODE -ne 0) { throw "Python TOY 2 failed (neodepends_python_export.py)" }
 Write-Host "✓ Python TOY 2 complete"
 Write-Host ""
 
@@ -122,10 +153,11 @@ New-Item -ItemType Directory -Force -Path "$OutputRoot\java_toy_first" | Out-Nul
     --depends-jar .\artifacts\depends.jar `
     --force
 
-& py -3 tools\export_dv8_from_neodepends_db.py `
+& $PythonExe tools\export_dv8_from_neodepends_db.py `
     --db "$OutputRoot\java_toy_first\dependencies.db" `
     --out "$OutputRoot\java_toy_first\dependencies.dv8-dsm-v3.json" `
     --name "Java TOY 1 (TrainTicketSystem)"
+if ($LASTEXITCODE -ne 0) { throw "Java TOY 1 export failed (export_dv8_from_neodepends_db.py)" }
 
 Write-Host "✓ Java TOY 1 complete"
 Write-Host ""
@@ -143,10 +175,11 @@ New-Item -ItemType Directory -Force -Path "$OutputRoot\java_toy_second" | Out-Nu
     --depends-jar .\artifacts\depends.jar `
     --force
 
-& py -3 tools\export_dv8_from_neodepends_db.py `
+& $PythonExe tools\export_dv8_from_neodepends_db.py `
     --db "$OutputRoot\java_toy_second\dependencies.db" `
     --out "$OutputRoot\java_toy_second\dependencies.dv8-dsm-v3.json" `
     --name "Java TOY 2 (TrainTicketSystem)"
+if ($LASTEXITCODE -ne 0) { throw "Java TOY 2 export failed (export_dv8_from_neodepends_db.py)" }
 
 Write-Host "✓ Java TOY 2 complete"
 Write-Host ""
