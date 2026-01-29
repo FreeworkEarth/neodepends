@@ -37,6 +37,12 @@ def _normalize_to_handcount_name(name: str) -> str:
       file.py/CLASSES/Class/FIELDS/bar (Field)
       file.py/FUNCTIONS/top (Function)
     """
+    if ".py::" in name:
+        file_part, rest = name.split(".py::", 1)
+        file_part = file_part + ".py"
+        func = rest.strip("/")
+        return f"{file_part}/FUNCTIONS/{func} (Function)"
+
     if name.endswith("/self (File)"):
         return name[: -len("/self (File)")] + "/module (Module)"
 
@@ -174,6 +180,29 @@ def _maybe_strip_prefixes(edges: Set[Edge], prefixes: Sequence[str]) -> Set[Edge
     return out
 
 
+def _exclude_prefixes(edges: Set[Edge], prefixes: Sequence[str]) -> Set[Edge]:
+    if not prefixes:
+        return edges
+    out: Set[Edge] = set()
+    for s, t, k in edges:
+        if any(s.startswith(p) or t.startswith(p) for p in prefixes):
+            continue
+        out.add((s, t, k))
+    return out
+
+
+def _expand_prefixes(raw: Sequence[str] | None) -> List[str]:
+    if not raw:
+        return []
+    out: List[str] = []
+    for item in raw:
+        if not item:
+            continue
+        parts = [p.strip() for p in str(item).split(",") if p.strip()]
+        out.extend(parts)
+    return out
+
+
 def _maybe_normalize_java(edges: Set[Edge], *, normalize_java: bool) -> Set[Edge]:
     if not normalize_java:
         return edges
@@ -188,23 +217,6 @@ def _maybe_normalize_java(edges: Set[Edge], *, normalize_java: bool) -> Set[Edge
 
 def _maybe_normalize_neodepends(edges: Set[Edge], *, normalize_professor: bool) -> Set[Edge]:
     if not normalize_professor:
-        return edges
-    # Quick heuristic: only run if we see professor-style markers.
-    looks_prof = any(
-        (
-            "/self (Class)" in s
-            or "/self (File)" in s
-            or "/methods/" in s
-            or "/fields/" in s
-            or "/-self " in s
-            or "/+SUBCLASSES/" in s
-            or "/+METHODS/" in s
-            or "/+FIELDS/" in s
-            or "/+CONSTRUCTORS/" in s
-        )
-        for s, _t, _k in edges
-    )
-    if not looks_prof:
         return edges
     out: Set[Edge] = set()
     for s, t, k in edges:
@@ -279,6 +291,12 @@ def main() -> int:
         default=None,
         help="Strip leading path prefix(es) from both NeoDepends and handcount edges (repeatable or comma-separated).",
     )
+    parser.add_argument(
+        "--exclude-prefix",
+        action="append",
+        default=None,
+        help="Exclude edges where src or tgt starts with prefix(es) (repeatable or comma-separated).",
+    )
     args = parser.parse_args()
 
     gt = _edges_from_json(args.ground_truth.expanduser().resolve())
@@ -286,16 +304,14 @@ def main() -> int:
     nd = _maybe_normalize_neodepends(nd, normalize_professor=bool(args.normalize_neodepends_professor))
     gt = _maybe_normalize_java(gt, normalize_java=bool(args.normalize_java_handcount))
     nd = _maybe_normalize_java(nd, normalize_java=bool(args.normalize_java_handcount))
-    prefixes: List[str] = []
-    if args.strip_prefix:
-        for item in args.strip_prefix:
-            for part in str(item).split(','):
-                part = part.strip()
-                if part:
-                    prefixes.append(part)
+    prefixes = _expand_prefixes(args.strip_prefix)
     if prefixes:
         gt = _maybe_strip_prefixes(gt, prefixes)
         nd = _maybe_strip_prefixes(nd, prefixes)
+    exclude_prefixes = _expand_prefixes(args.exclude_prefix)
+    if exclude_prefixes:
+        gt = _exclude_prefixes(gt, exclude_prefixes)
+        nd = _exclude_prefixes(nd, exclude_prefixes)
 
     missing = sorted(gt - nd)
     extra = sorted(nd - gt)

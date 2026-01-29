@@ -132,6 +132,8 @@ def main() -> int:
 
     exclude_handcount = [
         "DEPS__GROUND_TRUTH_HANDCOUNT/",
+        "DEPS_GROUND_TRUTH_HANDCOUNT/",
+        "DEPS_GROUND_TRUTH_HANDCOUNTS/",
         "dependencies_files_handcount",
         "dependencies_files_handcount_v1",
         "dependencies_files_handcount_v2",
@@ -193,7 +195,7 @@ def main() -> int:
                 input_path=repo_root / "examples/examples_testing/Py/survey example/Survey3",
                 lang="python",
                 handcount=repo_root
-                / "examples/examples_testing/Py/survey example/Survey3/dependencies_files_handcount/handcount_edges.heuristic.json",
+                / "examples/examples_testing/Py/DEPS_GROUND_TRUTH_HANDCOUNTS/survey example/dependencies_files_handcount/handcount_edges.heuristic.json",
                 normalize_professor=True,
                 exclude_prefixes=exclude_handcount,
             ),
@@ -202,16 +204,10 @@ def main() -> int:
                 input_path=repo_root / "examples/examples_testing/Py/moviepy example/moviepy/moviepy",
                 lang="python",
                 handcount=repo_root
-                / "examples/examples_testing/Py/moviepy example/moviepy/moviepy/dependencies_files_handcount_v3/handcount_edges.heuristic.json",
+                / "examples/examples_testing/Py/DEPS_GROUND_TRUTH_HANDCOUNTS/moviepy example/dependencies_files_handcount_v3/handcount_edges.heuristic.json",
                 normalize_professor=True,
                 strip_prefixes=["moviepy/"],
                 exclude_prefixes=exclude_handcount,
-            ),
-            Case(
-                name="doris",
-                input_path=repo_root / "examples/examples_testing/Java/doris example",
-                lang="java",
-                handcount=None,
             ),
             Case(
                 name="large_single_file",

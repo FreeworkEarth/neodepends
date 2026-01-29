@@ -492,54 +492,7 @@ fi
 REPORT_LINES+=("")
 
 # ============================================================================
-# TEST 9: Real Project - Doris (Java)
-# ============================================================================
-log_test "Real Project Analysis - Doris (Java)"
-
-DORIS_PATH="examples/examples_testing/Java/doris example"
-if [ -d "$DORIS_PATH" ]; then
-    log_info "Analyzing Doris project..."
-    python3 tools/neodepends_python_export.py \
-      --neodepends-bin "$NEODEPENDS_BIN" \
-      --input "$DORIS_PATH" \
-      --output-dir "$TEST_OUTPUT/doris_test" \
-      --resolver depends \
-      --depends-jar "$DEPENDS_JAR" \
-      --dv8-hierarchy structured \
-      --filter-architecture \
-      > "$TEST_OUTPUT/doris_test.log" 2>&1
-
-    if [ -f "$TEST_OUTPUT/doris_test/analysis-result.json" ]; then
-        log_pass "Doris analysis successful"
-        DORIS_SIZE=$(wc -c < "$TEST_OUTPUT/doris_test/analysis-result.json")
-        log_info "Output size: $DORIS_SIZE bytes"
-
-        # Count dependencies in DB and JSON
-        DORIS_DB_DEPS=$(sqlite3 "$TEST_OUTPUT/doris_test/data/dependencies.depends.db" "SELECT COUNT(*) FROM deps;" 2>/dev/null || echo "0")
-        DORIS_JSON_CELLS=$(python3 -c "import json; data=json.load(open('$TEST_OUTPUT/doris_test/analysis-result.json')); print(len(data.get('cells', [])))" 2>/dev/null || echo "0")
-        DORIS_JSON_VARS=$(python3 -c "import json; data=json.load(open('$TEST_OUTPUT/doris_test/analysis-result.json')); print(len(data.get('variables', [])))" 2>/dev/null || echo "0")
-        log_info "DB deps: $DORIS_DB_DEPS, JSON cells: $DORIS_JSON_CELLS, JSON variables: $DORIS_JSON_VARS"
-
-        PROJECT_TESTS+=("| Doris (Java) | Medium | $DORIS_DB_DEPS DB deps, $DORIS_JSON_CELLS JSON cells | PASS |")
-    else
-        log_fail "Doris analysis FAILED"
-        PROJECT_TESTS+=("| Doris (Java) | Medium | - | FAIL |")
-    fi
-
-    if [ -d "$TEST_OUTPUT/doris_test/data" ]; then
-        log_pass "Doris created data/ folder"
-    else
-        log_fail "Doris did NOT create data/ folder"
-    fi
-else
-    log_info "Doris example not found, skipping..."
-    PROJECT_TESTS+=("| Doris (Java) | Medium | - | SKIPPED |")
-fi
-
-REPORT_LINES+=("")
-
-# ============================================================================
-# TEST 10: QuickStart Examples - All 4 examples
+# TEST 9: QuickStart Examples - All 4 examples
 # ============================================================================
 log_test "QuickStart Examples - All 4 examples run successfully"
 

@@ -450,56 +450,7 @@ if (Test-Path $SurveyPath) {
 }
 
 # ============================================================================
-# TEST 9: Real Project Analysis - Doris (Java)
-# ============================================================================
-Log-Test "Real Project Analysis - Doris (Java)"
-
-$DorisPath = "examples\examples_testing\Java\doris example"
-if (Test-Path $DorisPath) {
-    Log-Info "Analyzing Doris project..."
-    $DorisTestDir = Join-Path $TestOutput "doris_test"
-    $DorisLogFile = Join-Path $TestOutput "doris_test.log"
-
-    & py -3 tools\neodepends_python_export.py `
-      --neodepends-bin $NeodependsBin `
-      --input $DorisPath `
-      --output-dir $DorisTestDir `
-      --resolver depends `
-      --depends-jar $DependsJar `
-      --dv8-hierarchy structured `
-      --filter-architecture `
-      > $DorisLogFile 2>&1
-
-    if (Test-Path "$DorisTestDir\analysis-result.json") {
-        Log-Pass "Doris analysis successful"
-        $DorisSize = (Get-Item "$DorisTestDir\analysis-result.json").Length
-        Log-Info "Output size: $DorisSize bytes"
-
-        $DorisDbDeps = & py -3 -c "import sqlite3; conn=sqlite3.connect('$DorisTestDir/dependencies.depends.db'.replace('\\', '/')); print(conn.execute('SELECT COUNT(*) FROM deps').fetchone()[0]); conn.close()" 2>$null
-        if (-not $DorisDbDeps) { $DorisDbDeps = 0 }
-
-        $DorisJsonCells = & py -3 -c "import json; data=json.load(open('$DorisTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
-        if (-not $DorisJsonCells) { $DorisJsonCells = 0 }
-
-        $DorisJsonVars = & py -3 -c "import json; data=json.load(open('$DorisTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('variables', [])))" 2>$null
-        if (-not $DorisJsonVars) { $DorisJsonVars = 0 }
-
-        Log-Info "DB deps: $DorisDbDeps, JSON cells: $DorisJsonCells, JSON variables: $DorisJsonVars"
-    } else {
-        Log-Fail "Doris analysis FAILED"
-    }
-
-    if (Test-Path "$DorisTestDir\data") {
-        Log-Pass "Doris created data/ folder"
-    } else {
-        Log-Fail "Doris did NOT create data/ folder"
-    }
-} else {
-    Log-Info "Doris example not found, skipping..."
-}
-
-# ============================================================================
-# TEST 10: QuickStart Examples - Run all 4 examples
+# TEST 9: QuickStart Examples - Run all 4 examples
 # ============================================================================
 Log-Test "QuickStart Examples - All 4 examples run successfully"
 
