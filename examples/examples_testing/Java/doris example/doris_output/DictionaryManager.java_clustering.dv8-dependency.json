@@ -1,0 +1,769 @@
+{
+  "@schemaVersion": "1.0",
+  "name": "DictionaryManager.java_clustering",
+  "variables": [
+    "(Client) fe/fe-core/src/main/java/org/apache/doris/catalog/Env.java",
+    "(Client) fe/fe-core/src/main/java/org/apache/doris/nereids/trees/expressions/functions/scalar/DictGet.java",
+    "(Client) fe/fe-core/src/main/java/org/apache/doris/nereids/trees/expressions/functions/scalar/DictGetMany.java",
+    "(Client) fe/fe-core/src/main/java/org/apache/doris/nereids/trees/plans/commands/CreateDictionaryCommand.java",
+    "(Client) fe/fe-core/src/main/java/org/apache/doris/nereids/trees/plans/commands/DropDictionaryCommand.java",
+    "(Client) fe/fe-core/src/main/java/org/apache/doris/nereids/trees/plans/commands/ExplainDictionaryCommand.java",
+    "(Client) fe/fe-core/src/main/java/org/apache/doris/nereids/trees/plans/commands/ShowDictionariesCommand.java",
+    "(Client) fe/fe-core/src/main/java/org/apache/doris/nereids/trees/plans/commands/refresh/RefreshDictionaryCommand.java",
+    "(Client) fe/fe-core/src/main/java/org/apache/doris/persist/EditLog.java",
+    "DICTIONARY_JOB_ID",
+    "DISPATCH_DICTIONARY_TASK_QUEUE_SIZE",
+    "DISPATCH_DICTIONARY_THREAD_NUM",
+    "DictionaryManager",
+    "LOG",
+    "abortSpecificVersion",
+    "checkAndUpdateDictionaries",
+    "collectDictionaryStatus",
+    "commitNowVersion",
+    "createDictionary",
+    "dataLoad",
+    "dataUnload",
+    "dbTableToDicIds",
+    "dictionaryIds",
+    "dropDbDictionaries",
+    "dropDictionary",
+    "dropTableDictionaries",
+    "executor",
+    "getDictionaries",
+    "getDictionary",
+    "getDictionary",
+    "hasDictionaryWithoutLock",
+    "idToDictionary",
+    "lock",
+    "lockRead",
+    "lockWrite",
+    "read",
+    "replayCreateDictionary",
+    "replayDecreaseVersion",
+    "replayDropDictionary",
+    "replayIncreaseVersion",
+    "runAfterCatalogReady",
+    "submitDataLoad",
+    "submitDataUnload",
+    "uniqueId",
+    "unlockRead",
+    "unlockWrite",
+    "write"
+  ],
+  "cells": [
+    {
+      "src": 41,
+      "dest": 13,
+      "values": {
+        "Use": 2.0
+      }
+    },
+    {
+      "src": 41,
+      "dest": 26,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 41,
+      "dest": 19,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 45,
+      "dest": 32,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 16,
+      "dest": 29,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 16,
+      "dest": 13,
+      "values": {
+        "Use": 9.0
+      }
+    },
+    {
+      "src": 16,
+      "dest": 31,
+      "values": {
+        "Use": 3.0
+      }
+    },
+    {
+      "src": 18,
+      "dest": 22,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 18,
+      "dest": 21,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 42,
+      "dest": 26,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 42,
+      "dest": 13,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 42,
+      "dest": 20,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 39,
+      "dest": 29,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 15,
+      "dest": 42,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 15,
+      "dest": 44,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 15,
+      "dest": 33,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 15,
+      "dest": 41,
+      "values": {
+        "Call": 2.0
+      }
+    },
+    {
+      "src": 15,
+      "dest": 22,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 15,
+      "dest": 31,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 15,
+      "dest": 16,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 18,
+      "dest": 43,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 18,
+      "dest": 45,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 18,
+      "dest": 41,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 18,
+      "dest": 34,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 18,
+      "dest": 30,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 18,
+      "dest": 29,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 18,
+      "dest": 31,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 38,
+      "dest": 31,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 38,
+      "dest": 34,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 38,
+      "dest": 45,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 38,
+      "dest": 13,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 38,
+      "dest": 21,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 38,
+      "dest": 22,
+      "values": {
+        "Use": 2.0
+      }
+    },
+    {
+      "src": 44,
+      "dest": 32,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 35,
+      "dest": 12,
+      "values": {
+        "Return": 1.0
+      }
+    },
+    {
+      "src": 23,
+      "dest": 21,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 23,
+      "dest": 34,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 23,
+      "dest": 22,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 23,
+      "dest": 45,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 20,
+      "dest": 13,
+      "values": {
+        "Use": 4.0
+      }
+    },
+    {
+      "src": 12,
+      "dest": 10,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 12,
+      "dest": 11,
+      "values": {
+        "Use": 2.0
+      }
+    },
+    {
+      "src": 12,
+      "dest": 26,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 30,
+      "dest": 22,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 19,
+      "dest": 22,
+      "values": {
+        "Use": 2.0
+      }
+    },
+    {
+      "src": 19,
+      "dest": 17,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 19,
+      "dest": 14,
+      "values": {
+        "Call": 3.0
+      }
+    },
+    {
+      "src": 19,
+      "dest": 13,
+      "values": {
+        "Use": 7.0
+      }
+    },
+    {
+      "src": 19,
+      "dest": 44,
+      "values": {
+        "Call": 2.0
+      }
+    },
+    {
+      "src": 19,
+      "dest": 33,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 19,
+      "dest": 9,
+      "values": {
+        "Use": 2.0
+      }
+    },
+    {
+      "src": 34,
+      "dest": 32,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 27,
+      "dest": 33,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 27,
+      "dest": 31,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 27,
+      "dest": 22,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 27,
+      "dest": 44,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 36,
+      "dest": 31,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 36,
+      "dest": 22,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 36,
+      "dest": 21,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 36,
+      "dest": 13,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 36,
+      "dest": 45,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 36,
+      "dest": 43,
+      "values": {
+        "Use": 2.0
+      }
+    },
+    {
+      "src": 36,
+      "dest": 34,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 40,
+      "dest": 15,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 40,
+      "dest": 13,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 24,
+      "dest": 45,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 24,
+      "dest": 34,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 24,
+      "dest": 31,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 24,
+      "dest": 22,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 24,
+      "dest": 21,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 17,
+      "dest": 13,
+      "values": {
+        "Use": 3.0
+      }
+    },
+    {
+      "src": 33,
+      "dest": 32,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 37,
+      "dest": 29,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 25,
+      "dest": 21,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 25,
+      "dest": 13,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 25,
+      "dest": 34,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 25,
+      "dest": 31,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 25,
+      "dest": 22,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 25,
+      "dest": 45,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 29,
+      "dest": 33,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 28,
+      "dest": 33,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 29,
+      "dest": 31,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 28,
+      "dest": 31,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 28,
+      "dest": 22,
+      "values": {
+        "Use": 1.0
+      }
+    },
+    {
+      "src": 29,
+      "dest": 44,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 28,
+      "dest": 44,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 14,
+      "dest": 13,
+      "values": {
+        "Use": 3.0
+      }
+    },
+    {
+      "src": 5,
+      "dest": 28,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 0,
+      "dest": 46,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 2,
+      "dest": 28,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 8,
+      "dest": 36,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 8,
+      "dest": 37,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 8,
+      "dest": 38,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 8,
+      "dest": 39,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 0,
+      "dest": 35,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 4,
+      "dest": 24,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 3,
+      "dest": 18,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 6,
+      "dest": 16,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 6,
+      "dest": 27,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 7,
+      "dest": 19,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 7,
+      "dest": 28,
+      "values": {
+        "Call": 1.0
+      }
+    },
+    {
+      "src": 1,
+      "dest": 28,
+      "values": {
+        "Call": 1.0
+      }
+    }
+  ]
+}

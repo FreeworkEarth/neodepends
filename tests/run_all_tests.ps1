@@ -170,9 +170,9 @@ if (Test-Path "setup.py") {
 }
 
 # ============================================================================
-# TEST 5: Folder Structure - Run Python analysis and check details/ folder
+# TEST 5: Folder Structure - Run Python analysis and check data/ folder
 # ============================================================================
-Log-Test "Folder Structure - Python analysis creates details/ folder"
+Log-Test "Folder Structure - Python analysis creates data/ folder"
 
 Log-Info "Running Python analysis on TOY example..."
 $PythonTestDir = Join-Path $TestOutput "python_test"
@@ -190,63 +190,57 @@ $PythonLogFile = Join-Path $TestOutput "python_test.log"
   --filter-stackgraphs-false-positives `
   > $PythonLogFile 2>&1
 
-# Check details/ folder exists
-if (Test-Path "$PythonTestDir\details") {
-    Log-Pass "details/ folder created"
+# Check data/ folder exists
+if (Test-Path "$PythonTestDir\data") {
+    Log-Pass "data/ folder created"
 } else {
-    Log-Fail "details/ folder NOT created"
+    Log-Fail "data/ folder NOT created"
 }
 
 # Check main files in root
-if (Test-Path "$PythonTestDir\dependencies.stackgraphs_ast.db") {
+if (Test-Path "$PythonTestDir\data\dependencies.stackgraphs_ast.db") {
     Log-Pass "Main DB in root: dependencies.stackgraphs_ast.db"
 } else {
     Log-Fail "Main DB NOT in root"
 }
 
-if (Test-Path "$PythonTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json") {
-    Log-Pass "Main DV8 DSM in root: dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json"
+if (Test-Path "$PythonTestDir\analysis-result.json") {
+    Log-Pass "Main DV8 DSM in root: analysis-result.json"
 } else {
     Log-Fail "Main DV8 DSM NOT in root"
 }
 
-# Check file-level DV8 in details/
-if (Test-Path "$PythonTestDir\details\dependencies.stackgraphs_ast.file.dv8-dsm-v3.json") {
-    Log-Pass "File-level DV8 in details/: dependencies.stackgraphs_ast.file.dv8-dsm-v3.json"
+# Check file-level DV8 in data/
+if (Test-Path "$PythonTestDir\data\dv8_deps") {
+    Log-Pass "Per-file DV8s in data\\dv8_deps\\"
 } else {
-    Log-Fail "File-level DV8 NOT in details/"
+    Log-Fail "Per-file DV8s NOT in data\\dv8_deps\\"
 }
 
-# Check intermediate files in details/
-if (Test-Path "$PythonTestDir\details\dv8_deps") {
-    Log-Pass "Per-file DV8s in details\dv8_deps\"
+# Check intermediate files in data/
+if (Test-Path "$PythonTestDir\data\per_file_dbs") {
+    Log-Pass "Per-file DBs in data\\per_file_dbs\\"
 } else {
-    Log-Fail "Per-file DV8s NOT in details\dv8_deps\"
+    Log-Fail "Per-file DBs NOT in data\\per_file_dbs\\"
 }
 
-if (Test-Path "$PythonTestDir\details\per_file_dbs") {
-    Log-Pass "Per-file DBs in details\per_file_dbs\"
+if (Test-Path "$PythonTestDir\data\run_summary.json") {
+    Log-Pass "run_summary.json in data/"
 } else {
-    Log-Fail "Per-file DBs NOT in details\per_file_dbs\"
+    Log-Fail "run_summary.json NOT in data/"
 }
 
-if (Test-Path "$PythonTestDir\details\run_summary.json") {
-    Log-Pass "run_summary.json in details/"
+# Check raw folders in data/
+if (Test-Path "$PythonTestDir\data\raw") {
+    Log-Pass "Raw output in data\\raw\\"
 } else {
-    Log-Fail "run_summary.json NOT in details/"
+    Log-Fail "Raw output NOT in data\\raw\\"
 }
 
-# Check raw folders in details/
-if (Test-Path "$PythonTestDir\details\raw") {
-    Log-Pass "Raw output in details\raw\"
+if (Test-Path "$PythonTestDir\data\raw_filtered") {
+    Log-Pass "Filtered raw output in data\\raw_filtered\\"
 } else {
-    Log-Fail "Raw output NOT in details\raw\"
-}
-
-if (Test-Path "$PythonTestDir\details\raw_filtered") {
-    Log-Pass "Filtered raw output in details\raw_filtered\"
-} else {
-    Log-Fail "Filtered raw output NOT in details\raw_filtered\"
+    Log-Fail "Filtered raw output NOT in data\\raw_filtered\\"
 }
 
 # ============================================================================
@@ -291,19 +285,19 @@ $VideoClipLogFile = Join-Path $TestOutput "videoclip_test.log"
   --filter-stackgraphs-false-positives `
   > $VideoClipLogFile 2>&1
 
-if (Test-Path "$VideoClipTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json") {
+if (Test-Path "$VideoClipTestDir\analysis-result.json") {
     Log-Pass "Single-file analysis successful - DV8 file created"
-    $VideoClipSize = (Get-Item "$VideoClipTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json").Length
+    $VideoClipSize = (Get-Item "$VideoClipTestDir\analysis-result.json").Length
     Log-Info "Output size: $VideoClipSize bytes"
 
     # Count dependencies in DB and JSON (using Python for cross-platform SQLite access)
     $VideoClipDbDeps = & py -3 -c "import sqlite3; conn=sqlite3.connect('$VideoClipTestDir/dependencies.stackgraphs_ast.db'.replace('\\', '/')); print(conn.execute('SELECT COUNT(*) FROM deps').fetchone()[0]); conn.close()" 2>$null
     if (-not $VideoClipDbDeps) { $VideoClipDbDeps = 0 }
 
-    $VideoClipJsonCells = & py -3 -c "import json; data=json.load(open('$VideoClipTestDir/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
+    $VideoClipJsonCells = & py -3 -c "import json; data=json.load(open('$VideoClipTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
     if (-not $VideoClipJsonCells) { $VideoClipJsonCells = 0 }
 
-    $VideoClipJsonVars = & py -3 -c "import json; data=json.load(open('$VideoClipTestDir/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json'.replace('\\', '/'))); print(len(data.get('variables', [])))" 2>$null
+    $VideoClipJsonVars = & py -3 -c "import json; data=json.load(open('$VideoClipTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('variables', [])))" 2>$null
     if (-not $VideoClipJsonVars) { $VideoClipJsonVars = 0 }
 
     Log-Info "DB deps: $VideoClipDbDeps, JSON cells: $VideoClipJsonCells, JSON variables: $VideoClipJsonVars"
@@ -311,10 +305,10 @@ if (Test-Path "$VideoClipTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v
     Log-Fail "Single-file analysis FAILED - no DV8 file"
 }
 
-if (Test-Path "$VideoClipTestDir\details") {
-    Log-Pass "Single-file analysis created details/ folder"
+if (Test-Path "$VideoClipTestDir\data") {
+    Log-Pass "Single-file analysis created data/ folder"
 } else {
-    Log-Fail "Single-file analysis did NOT create details/ folder"
+    Log-Fail "Single-file analysis did NOT create data/ folder"
 }
 
 # Check if enhancement completed
@@ -328,7 +322,7 @@ if ($VideoClipLogContent -match "Method->Field dependencies created") {
 # ============================================================================
 Log-Test "Real Project Analysis - Moviepy"
 
-$MoviepyPath = "tests\examples_testing\Py\moviepy example\moviepy"
+$MoviepyPath = "examples\examples_testing\Py\moviepy example\moviepy"
 if (Test-Path $MoviepyPath) {
     Log-Info "Analyzing Moviepy project..."
     $MoviepyTestDir = Join-Path $TestOutput "moviepy_test"
@@ -346,9 +340,9 @@ if (Test-Path $MoviepyPath) {
       --filter-stackgraphs-false-positives `
       > $MoviepyLogFile 2>&1
 
-    if (Test-Path "$MoviepyTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json") {
+    if (Test-Path "$MoviepyTestDir\analysis-result.json") {
         Log-Pass "Moviepy analysis successful"
-        $MoviepySize = (Get-Item "$MoviepyTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json").Length
+        $MoviepySize = (Get-Item "$MoviepyTestDir\analysis-result.json").Length
         Log-Info "Output size: $MoviepySize bytes"
 
         # Extract metrics from log
@@ -368,10 +362,10 @@ if (Test-Path $MoviepyPath) {
         $MoviepyDbDeps = & py -3 -c "import sqlite3; conn=sqlite3.connect('$MoviepyTestDir/dependencies.stackgraphs_ast.db'.replace('\\', '/')); print(conn.execute('SELECT COUNT(*) FROM deps').fetchone()[0]); conn.close()" 2>$null
         if (-not $MoviepyDbDeps) { $MoviepyDbDeps = 0 }
 
-        $MoviepyJsonCells = & py -3 -c "import json; data=json.load(open('$MoviepyTestDir/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
+        $MoviepyJsonCells = & py -3 -c "import json; data=json.load(open('$MoviepyTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
         if (-not $MoviepyJsonCells) { $MoviepyJsonCells = 0 }
 
-        $MoviepyJsonVars = & py -3 -c "import json; data=json.load(open('$MoviepyTestDir/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json'.replace('\\', '/'))); print(len(data.get('variables', [])))" 2>$null
+        $MoviepyJsonVars = & py -3 -c "import json; data=json.load(open('$MoviepyTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('variables', [])))" 2>$null
         if (-not $MoviepyJsonVars) { $MoviepyJsonVars = 0 }
 
         Log-Info "Method->Field deps: $MoviepyMethodField, Fields moved: $MoviepyFieldsMoved"
@@ -380,10 +374,10 @@ if (Test-Path $MoviepyPath) {
         Log-Fail "Moviepy analysis FAILED"
     }
 
-    if (Test-Path "$MoviepyTestDir\details") {
-        Log-Pass "Moviepy created details/ folder"
+    if (Test-Path "$MoviepyTestDir\data") {
+        Log-Pass "Moviepy created data/ folder"
     } else {
-        Log-Fail "Moviepy did NOT create details/ folder"
+        Log-Fail "Moviepy did NOT create data/ folder"
     }
 } else {
     Log-Info "Moviepy example not found, skipping..."
@@ -394,7 +388,7 @@ if (Test-Path $MoviepyPath) {
 # ============================================================================
 Log-Test "Real Project Analysis - Survey"
 
-$SurveyPath = "tests\examples_testing\Py\survey example\survey3"
+$SurveyPath = "examples\examples_testing\Py\survey example\Survey3"
 if (Test-Path $SurveyPath) {
     Log-Info "Analyzing Survey project..."
     $SurveyTestDir = Join-Path $TestOutput "survey_test"
@@ -412,9 +406,9 @@ if (Test-Path $SurveyPath) {
       --filter-stackgraphs-false-positives `
       > $SurveyLogFile 2>&1
 
-    if (Test-Path "$SurveyTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json") {
+    if (Test-Path "$SurveyTestDir\analysis-result.json") {
         Log-Pass "Survey analysis successful"
-        $SurveySize = (Get-Item "$SurveyTestDir\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json").Length
+        $SurveySize = (Get-Item "$SurveyTestDir\analysis-result.json").Length
         Log-Info "Output size: $SurveySize bytes"
 
         # Extract metrics from log
@@ -434,10 +428,10 @@ if (Test-Path $SurveyPath) {
         $SurveyDbDeps = & py -3 -c "import sqlite3; conn=sqlite3.connect('$SurveyTestDir/dependencies.stackgraphs_ast.db'.replace('\\', '/')); print(conn.execute('SELECT COUNT(*) FROM deps').fetchone()[0]); conn.close()" 2>$null
         if (-not $SurveyDbDeps) { $SurveyDbDeps = 0 }
 
-        $SurveyJsonCells = & py -3 -c "import json; data=json.load(open('$SurveyTestDir/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
+        $SurveyJsonCells = & py -3 -c "import json; data=json.load(open('$SurveyTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
         if (-not $SurveyJsonCells) { $SurveyJsonCells = 0 }
 
-        $SurveyJsonVars = & py -3 -c "import json; data=json.load(open('$SurveyTestDir/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json'.replace('\\', '/'))); print(len(data.get('variables', [])))" 2>$null
+        $SurveyJsonVars = & py -3 -c "import json; data=json.load(open('$SurveyTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('variables', [])))" 2>$null
         if (-not $SurveyJsonVars) { $SurveyJsonVars = 0 }
 
         Log-Info "Method->Field deps: $SurveyMethodField, Fields moved: $SurveyFieldsMoved"
@@ -446,17 +440,66 @@ if (Test-Path $SurveyPath) {
         Log-Fail "Survey analysis FAILED"
     }
 
-    if (Test-Path "$SurveyTestDir\details") {
-        Log-Pass "Survey created details/ folder"
+    if (Test-Path "$SurveyTestDir\data") {
+        Log-Pass "Survey created data/ folder"
     } else {
-        Log-Fail "Survey did NOT create details/ folder"
+        Log-Fail "Survey did NOT create data/ folder"
     }
 } else {
     Log-Info "Survey example not found, skipping..."
 }
 
 # ============================================================================
-# TEST 9: QuickStart Examples - Run all 4 examples
+# TEST 9: Real Project Analysis - Doris (Java)
+# ============================================================================
+Log-Test "Real Project Analysis - Doris (Java)"
+
+$DorisPath = "examples\examples_testing\Java\doris example"
+if (Test-Path $DorisPath) {
+    Log-Info "Analyzing Doris project..."
+    $DorisTestDir = Join-Path $TestOutput "doris_test"
+    $DorisLogFile = Join-Path $TestOutput "doris_test.log"
+
+    & py -3 tools\neodepends_python_export.py `
+      --neodepends-bin $NeodependsBin `
+      --input $DorisPath `
+      --output-dir $DorisTestDir `
+      --resolver depends `
+      --depends-jar $DependsJar `
+      --dv8-hierarchy structured `
+      --filter-architecture `
+      > $DorisLogFile 2>&1
+
+    if (Test-Path "$DorisTestDir\analysis-result.json") {
+        Log-Pass "Doris analysis successful"
+        $DorisSize = (Get-Item "$DorisTestDir\analysis-result.json").Length
+        Log-Info "Output size: $DorisSize bytes"
+
+        $DorisDbDeps = & py -3 -c "import sqlite3; conn=sqlite3.connect('$DorisTestDir/dependencies.depends.db'.replace('\\', '/')); print(conn.execute('SELECT COUNT(*) FROM deps').fetchone()[0]); conn.close()" 2>$null
+        if (-not $DorisDbDeps) { $DorisDbDeps = 0 }
+
+        $DorisJsonCells = & py -3 -c "import json; data=json.load(open('$DorisTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('cells', [])))" 2>$null
+        if (-not $DorisJsonCells) { $DorisJsonCells = 0 }
+
+        $DorisJsonVars = & py -3 -c "import json; data=json.load(open('$DorisTestDir/analysis-result.json'.replace('\\', '/'))); print(len(data.get('variables', [])))" 2>$null
+        if (-not $DorisJsonVars) { $DorisJsonVars = 0 }
+
+        Log-Info "DB deps: $DorisDbDeps, JSON cells: $DorisJsonCells, JSON variables: $DorisJsonVars"
+    } else {
+        Log-Fail "Doris analysis FAILED"
+    }
+
+    if (Test-Path "$DorisTestDir\data") {
+        Log-Pass "Doris created data/ folder"
+    } else {
+        Log-Fail "Doris did NOT create data/ folder"
+    }
+} else {
+    Log-Info "Doris example not found, skipping..."
+}
+
+# ============================================================================
+# TEST 10: QuickStart Examples - Run all 4 examples
 # ============================================================================
 Log-Test "QuickStart Examples - All 4 examples run successfully"
 
@@ -465,29 +508,29 @@ $QuickStartLog = Join-Path $TestOutput "quickstart.log"
 & .\QuickStart_dependency_analysis_examples.ps1 > $QuickStartLog 2>&1
 
 # Check Python TOY 1
-if (Test-Path "RESULTS_QuickStart_Examples\python_toy_first\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json") {
+if (Test-Path "RESULTS_QuickStart_Examples\python_toy_first\analysis-result.json") {
     Log-Pass "Python TOY 1 - DV8 file created"
 } else {
     Log-Fail "Python TOY 1 - DV8 file NOT created"
 }
 
-if (Test-Path "RESULTS_QuickStart_Examples\python_toy_first\details") {
-    Log-Pass "Python TOY 1 - details/ folder created"
+if (Test-Path "RESULTS_QuickStart_Examples\python_toy_first\data") {
+    Log-Pass "Python TOY 1 - data/ folder created"
 } else {
-    Log-Fail "Python TOY 1 - details/ folder NOT created"
+    Log-Fail "Python TOY 1 - data/ folder NOT created"
 }
 
 # Check Python TOY 2
-if (Test-Path "RESULTS_QuickStart_Examples\python_toy_second\dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json") {
+if (Test-Path "RESULTS_QuickStart_Examples\python_toy_second\analysis-result.json") {
     Log-Pass "Python TOY 2 - DV8 file created"
 } else {
     Log-Fail "Python TOY 2 - DV8 file NOT created"
 }
 
-if (Test-Path "RESULTS_QuickStart_Examples\python_toy_second\details") {
-    Log-Pass "Python TOY 2 - details/ folder created"
+if (Test-Path "RESULTS_QuickStart_Examples\python_toy_second\data") {
+    Log-Pass "Python TOY 2 - data/ folder created"
 } else {
-    Log-Fail "Python TOY 2 - details/ folder NOT created"
+    Log-Fail "Python TOY 2 - data/ folder NOT created"
 }
 
 # Check Java TOY 1

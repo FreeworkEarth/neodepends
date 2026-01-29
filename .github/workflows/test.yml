@@ -2,15 +2,17 @@ name: Test Suite
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, production ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, production ]
   workflow_dispatch: {}
 
 jobs:
   test:
     name: Run Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      TOY_REPO_URL: "https://github.com/FreeworkEarth/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES.git"
     strategy:
       fail-fast: false
       matrix:
@@ -55,6 +57,27 @@ jobs:
         shell: pwsh
         run: |
           .\tests\run_all_tests.ps1
+
+      - name: Fetch TOY examples (optional)
+        if: runner.os == 'Linux' && env.TOY_REPO_URL != ''
+        shell: bash
+        run: |
+          git clone --depth 1 --branch main "$TOY_REPO_URL" /tmp/toy
+
+      - name: Handcount regression (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          TOY_ARGS=""
+          if [ -d /tmp/toy ]; then
+            TOY_ARGS="--toy-root /tmp/toy"
+          fi
+          python3 tools/run_handcount_regression.py \
+            --neodepends-bin target/release/neodepends \
+            --depends-jar artifacts/depends.jar \
+            --output-dir tests/test_output/handcount_regression \
+            --tolerance 0.05 \
+            $TOY_ARGS
 
       - name: Upload test artifacts on failure
         if: failure()
