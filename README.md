@@ -122,6 +122,10 @@ cd C:\path\to\neodepends
 
 This will analyze 4 example TrainTicketSystem projects (2 Python, 2 Java) and save DV8 DSM files to `RESULTS_QuickStart_Examples/`.
 
+**Toy repo auto‑pull:** If `TOY_ROOT` is not set, QuickStart will automatically clone the multilang toy repo
+`ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG` into `/tmp/neodepends_toy` and use it.  
+To use a local checkout instead, set `TOY_ROOT` to that path before running.
+
 **Output files (open in DV8 Explorer):**
 
 - `RESULTS_QuickStart_Examples/python_toy_first/dependencies.stackgraphs_ast.filtered.dv8-dsm-v3.json`
