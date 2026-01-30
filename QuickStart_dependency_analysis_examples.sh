@@ -38,6 +38,58 @@ fi
 echo "Using NeoDepends binary: ${NEODEPENDS_BIN}"
 echo ""
 
+# Resolve toy example paths (multilang preferred)
+TOY_ROOT_RESOLVED=""
+if [ -n "${TOY_ROOT:-}" ] && [ -d "$TOY_ROOT" ]; then
+    TOY_ROOT_RESOLVED="$TOY_ROOT"
+else
+    for candidate in \
+        "$SCRIPT_DIR/../../../../000_TOY_EXAMPLES/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG" \
+        "$SCRIPT_DIR/../../../000_TOY_EXAMPLES/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG"; do
+        if [ -d "$candidate" ]; then
+            TOY_ROOT_RESOLVED="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$TOY_ROOT_RESOLVED" ] || [ ! -d "$TOY_ROOT_RESOLVED/python/first_godclass_antipattern" ]; then
+    TOY_REPO_URL="${TOY_REPO_URL:-https://github.com/FreeworkEarth/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG.git}"
+    TOY_CLONE_DIR="/tmp/neodepends_toy"
+    if command -v git >/dev/null 2>&1; then
+        if [ -d "$TOY_CLONE_DIR/.git" ]; then
+            (cd "$TOY_CLONE_DIR" && git fetch --depth 1 origin main && git reset --hard origin/main) >/dev/null 2>&1 || true
+        else
+            rm -rf "$TOY_CLONE_DIR"
+            git clone --depth 1 --branch main "$TOY_REPO_URL" "$TOY_CLONE_DIR" >/dev/null 2>&1 || true
+        fi
+        if [ -d "$TOY_CLONE_DIR/python/first_godclass_antipattern" ]; then
+            TOY_ROOT_RESOLVED="$TOY_CLONE_DIR"
+        fi
+    fi
+fi
+
+if [ -n "$TOY_ROOT_RESOLVED" ] && [ -d "$TOY_ROOT_RESOLVED/python/first_godclass_antipattern" ]; then
+    echo "Using multilang TOY examples: $TOY_ROOT_RESOLVED"
+    PYTHON_TOY_1="$TOY_ROOT_RESOLVED/python/first_godclass_antipattern"
+    PYTHON_TOY_2="$TOY_ROOT_RESOLVED/python/second_repository_refactored"
+    JAVA_TOY_1="$TOY_ROOT_RESOLVED/java/first_godclass_antipattern"
+    JAVA_TOY_2="$TOY_ROOT_RESOLVED/java/second_repository_refactored"
+else
+    CANONICAL_ROOT="$SCRIPT_DIR/../../../000_TOY_EXAMPLES/canonical_examples"
+    if [ -d "$CANONICAL_ROOT/python/first/tts" ]; then
+        echo "Using canonical TOY examples: $CANONICAL_ROOT"
+        PYTHON_TOY_1="$CANONICAL_ROOT/python/first/tts"
+        PYTHON_TOY_2="$CANONICAL_ROOT/python/second/tts"
+        JAVA_TOY_1="$CANONICAL_ROOT/java/first/src"
+        JAVA_TOY_2="$CANONICAL_ROOT/java/second/src"
+    else
+        echo "ERROR: Toy examples not found."
+        echo "Set TOY_ROOT to the multilang repo: ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG"
+        exit 1
+    fi
+fi
+
 # ============================================================================
 # PYTHON EXAMPLES (using StackGraphs AST resolver)
 # ============================================================================
@@ -53,7 +105,7 @@ PYTHON_FLAGS=(
 echo "=== 1/4: Python Example - TrainTicketSystem TOY 1 ==="
 python3 tools/neodepends_python_export.py \
     --neodepends-bin "${NEODEPENDS_BIN}" \
-    --input "examples/TrainTicketSystem_TOY_PYTHON_FIRST/tts" \
+    --input "${PYTHON_TOY_1}" \
     --output-dir "${OUTPUT_ROOT}/python_toy_first" \
     "${PYTHON_FLAGS[@]}"
 echo "✓ Python TOY 1 complete"
@@ -62,7 +114,7 @@ echo ""
 echo "=== 2/4: Python Example - TrainTicketSystem TOY 2 ==="
 python3 tools/neodepends_python_export.py \
     --neodepends-bin "${NEODEPENDS_BIN}" \
-    --input "examples/TrainTicketSystem_TOY_PYTHON_SECOND/tts" \
+    --input "${PYTHON_TOY_2}" \
     --output-dir "${OUTPUT_ROOT}/python_toy_second" \
     "${PYTHON_FLAGS[@]}"
 echo "✓ Python TOY 2 complete"
@@ -76,7 +128,7 @@ echo "=== 3/4: Java Example - TrainTicketSystem TOY 1 ==="
 mkdir -p "${OUTPUT_ROOT}/java_toy_first"
 
 "${NEODEPENDS_BIN}" \
-    --input "examples/TrainTicketSystem_TOY_JAVA_FIRST/src" \
+    --input "${JAVA_TOY_1}" \
     --output "${OUTPUT_ROOT}/java_toy_first/dependencies.db" \
     --format sqlite \
     --resources entities,deps,contents \
@@ -97,7 +149,7 @@ echo "=== 4/4: Java Example - TrainTicketSystem TOY 2 ==="
 mkdir -p "${OUTPUT_ROOT}/java_toy_second"
 
 "${NEODEPENDS_BIN}" \
-    --input "examples/TrainTicketSystem_TOY_JAVA_SECOND/src" \
+    --input "${JAVA_TOY_2}" \
     --output "${OUTPUT_ROOT}/java_toy_second/dependencies.db" \
     --format sqlite \
     --resources entities,deps,contents \

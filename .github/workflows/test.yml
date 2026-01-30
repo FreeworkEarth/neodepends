@@ -1,0 +1,89 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, production ]
+  pull_request:
+    branches: [ main, production ]
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    name: Run Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    env:
+      TOY_REPO_URL: "https://github.com/FreeworkEarth/ARCH_ANALYSIS_TRAINTICKET_TOY_EXAMPLES_MULTILANG.git"
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build (release)
+        run: cargo build --release --locked
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Java (for depends.jar)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Fetch TOY examples (optional)
+        if: runner.os == 'Linux' && env.TOY_REPO_URL != ''
+        shell: bash
+        run: |
+          git clone --depth 1 --branch main "$TOY_REPO_URL" /tmp/toy
+          echo "TOY_ROOT=/tmp/toy" >> "$GITHUB_ENV"
+
+      - name: Run tests (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          chmod +x tests/run_all_tests.sh
+          ./tests/run_all_tests.sh
+
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\tests\run_all_tests.ps1
+
+      - name: Example comparison (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          TOY_ARGS=""
+          if [ -d /tmp/toy ]; then
+            TOY_ARGS="--toy-root /tmp/toy"
+          fi
+          python3 tools/run_handcount_regression.py \
+            --neodepends-bin target/release/neodepends \
+            --depends-jar artifacts/depends.jar \
+            --output-dir tests/test_output/handcount_regression \
+            --tolerance 0.05 \
+            $TOY_ARGS
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output-${{ matrix.os }}
+          path: tests/test_output/
+          retention-days: 7

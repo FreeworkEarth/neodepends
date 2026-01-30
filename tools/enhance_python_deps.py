@@ -150,14 +150,27 @@ class _MethodBodyFacts(ast.NodeVisitor):
     def __init__(self, known_classes: Set[str]):
         self.known_classes = known_classes
         self.self_attrs: Set[str] = set()
+        self.field_assign_uses: Set[Tuple[str, str]] = set()
+        self.field_calls: List[Tuple[str, str]] = []
+        self.field_type_assigns: Dict[str, str] = {}
         self.class_attr_uses: Set[Tuple[str, str]] = set()
+        self.isinstance_types: Set[str] = set()
         self.class_calls: Set[Tuple[str, str]] = set()
         self.self_calls: Set[str] = set()
         self.super_calls: Set[str] = set()
         self.var_calls: List[Tuple[str, str]] = []
+        self.func_calls: Set[str] = set()
         self.creates: Set[str] = set()
         self.cls_create: bool = False
         self.env: Dict[str, str] = {}
+
+    @staticmethod
+    def _collect_self_attrs(node: ast.AST) -> Set[str]:
+        attrs: Set[str] = set()
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Attribute) and isinstance(sub.value, ast.Name) and sub.value.id == "self":
+                attrs.add(sub.attr)
+        return attrs
 
     def visit_Attribute(self, node: ast.Attribute):
         if isinstance(node.value, ast.Name) and node.value.id == "self":
@@ -168,6 +181,31 @@ class _MethodBodyFacts(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign):
+        # self.field = ... self.other_field ...
+        targets = [
+            t for t in node.targets
+            if isinstance(t, ast.Attribute)
+            and isinstance(t.value, ast.Name)
+            and t.value.id == "self"
+        ]
+        if targets:
+            rhs_attrs = self._collect_self_attrs(node.value)
+            if rhs_attrs:
+                for t in targets:
+                    for src in rhs_attrs:
+                        if src != t.attr:
+                            self.field_assign_uses.add((t.attr, src))
+            if isinstance(node.value, ast.Call):
+                func = node.value.func
+                base: Optional[str] = None
+                if isinstance(func, ast.Name) and func.id in self.known_classes:
+                    base = func.id
+                elif isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.value.id in self.known_classes:
+                    base = func.value.id
+                if base:
+                    for t in targets:
+                        self.field_type_assigns[t.attr] = base
+
         # var = ClassName(...)
         if (
             len(node.targets) == 1
@@ -191,7 +229,52 @@ class _MethodBodyFacts(ast.NodeVisitor):
                     self.env[var] = base
         self.generic_visit(node)
 
+    def visit_AugAssign(self, node: ast.AugAssign):
+        # self.field += self.other_field
+        if (
+            isinstance(node.target, ast.Attribute)
+            and isinstance(node.target.value, ast.Name)
+            and node.target.value.id == "self"
+        ):
+            rhs_attrs = self._collect_self_attrs(node.value)
+            for src in rhs_attrs:
+                if src != node.target.attr:
+                    self.field_assign_uses.add((node.target.attr, src))
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign):
+        # self.field: type = ... self.other_field ...
+        if (
+            isinstance(node.target, ast.Attribute)
+            and isinstance(node.target.value, ast.Name)
+            and node.target.value.id == "self"
+            and node.value is not None
+        ):
+            rhs_attrs = self._collect_self_attrs(node.value)
+            for src in rhs_attrs:
+                if src != node.target.attr:
+                    self.field_assign_uses.add((node.target.attr, src))
+        self.generic_visit(node)
+
+    @staticmethod
+    def _collect_isinstance_type_names(node: ast.AST) -> Set[str]:
+        names: Set[str] = set()
+        if isinstance(node, ast.Name):
+            names.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            names.add(node.attr)
+        elif isinstance(node, (ast.Tuple, ast.List)):
+            for elt in node.elts:
+                names |= _MethodBodyFacts._collect_isinstance_type_names(elt)
+        return names
+
     def visit_Call(self, node: ast.Call):
+        if isinstance(node.func, ast.Name) and node.func.id == "isinstance":
+            if len(node.args) >= 2:
+                for type_name in self._collect_isinstance_type_names(node.args[1]):
+                    if type_name in self.known_classes:
+                        self.isinstance_types.add(type_name)
+
         # Create: ClassName(...)
         if isinstance(node.func, ast.Name) and node.func.id in self.known_classes:
             self.creates.add(node.func.id)
@@ -211,6 +294,11 @@ class _MethodBodyFacts(ast.NodeVisitor):
             # Calls: ClassName.method(...), e.g. VideoClip.__init__(self, ...)
             if isinstance(recv, ast.Name) and recv.id in self.known_classes:
                 self.class_calls.add((recv.id, attr))
+                self.generic_visit(node)
+                return
+            # Calls: self.field.method(...)
+            if isinstance(recv, ast.Attribute) and isinstance(recv.value, ast.Name) and recv.value.id == "self":
+                self.field_calls.append((recv.attr, attr))
                 self.generic_visit(node)
                 return
 
@@ -233,6 +321,12 @@ class _MethodBodyFacts(ast.NodeVisitor):
                 self.generic_visit(node)
                 return
 
+        # Plain function calls: foo(...)
+        if isinstance(node.func, ast.Name):
+            self.func_calls.add(node.func.id)
+            self.generic_visit(node)
+            return
+
         self.generic_visit(node)
 
 def _compress_field_hits(field_names: List[str]) -> str:
@@ -245,7 +339,7 @@ def _compress_field_hits(field_names: List[str]) -> str:
         parts.append(f"{name} x{n}" if n > 1 else name)
     return ", ".join(parts)
 
-def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str = "depends") -> Tuple[int, int, int]:
+def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str = "depends") -> Tuple[int, int]:
     """
     Enhance Python dependencies in a NeoDepends database.
 
@@ -396,6 +490,7 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
     print(f"Import deps added: {import_added}")
 
     new_deps_count = 0
+    field_field_deps_added = 0
     methods_analyzed = 0
 
     # Index classes
@@ -421,6 +516,63 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
         class_content_id[cid] = content_id
 
     known_class_names: Set[str] = set(class_ids_by_name.keys())
+
+    # Detect dataclasses and their field order (for field-field coupling heuristics).
+    dataclass_fields_by_class: Dict[bytes, List[str]] = {}
+    dataclass_field_types_by_class: Dict[bytes, Dict[str, str]] = {}
+    parsed_trees_by_content: Dict[bytes, Optional[ast.AST]] = {}
+
+    def _is_dataclass_decorator(dec: ast.expr) -> bool:
+        if isinstance(dec, ast.Name) and dec.id == "dataclass":
+            return True
+        if isinstance(dec, ast.Attribute) and dec.attr == "dataclass":
+            return True
+        return False
+
+    def _find_class_node(tree: ast.AST, name: str, start_row: int, end_row: int) -> Optional[ast.ClassDef]:
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef) or node.name != name:
+                continue
+            if not hasattr(node, "lineno"):
+                return node
+            node_start = int(getattr(node, "lineno", 1)) - 1
+            node_end = int(getattr(node, "end_lineno", node_start + 1)) - 1
+            if start_row <= node_start <= end_row and start_row <= node_end <= end_row:
+                return node
+        return None
+
+    for class_id, class_name, class_start, class_end, content_id in class_rows:
+        if content_id not in parsed_trees_by_content:
+            content = get_file_content(content_id, conn)
+            try:
+                parsed_trees_by_content[content_id] = ast.parse(content) if content.strip() else None
+            except SyntaxError:
+                parsed_trees_by_content[content_id] = None
+        tree = parsed_trees_by_content.get(content_id)
+        if tree is None:
+            continue
+        class_node = _find_class_node(tree, class_name, class_start, class_end)
+        if class_node is None:
+            continue
+        if not any(_is_dataclass_decorator(d) for d in class_node.decorator_list):
+            continue
+
+        field_order: List[str] = []
+        field_types: Dict[str, str] = {}
+        for stmt in class_node.body:
+            if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+                field_order.append(stmt.target.id)
+                ann = stmt.annotation
+                if isinstance(ann, ast.Name) and ann.id in known_class_names:
+                    field_types[stmt.target.id] = ann.id
+            elif isinstance(stmt, ast.Assign):
+                for tgt in stmt.targets:
+                    if isinstance(tgt, ast.Name):
+                        field_order.append(tgt.id)
+        if field_order:
+            dataclass_fields_by_class[class_id] = field_order
+            if field_types:
+                dataclass_field_types_by_class[class_id] = field_types
 
     def resolve_class_id_by_name(name: str, preferred_content_id: Optional[bytes]) -> Optional[bytes]:
         """
@@ -525,12 +677,21 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
     for src, tgt in cursor.fetchall():
         bases_by_class.setdefault(src, []).append(tgt)
 
-    # Index methods: class -> {name: id}
-    cursor.execute("SELECT id, parent_id, name, start_row, end_row, content_id FROM entities WHERE kind = 'Method'")
+    # Reverse map: base class -> subclasses
+    derived_by_class: Dict[bytes, List[bytes]] = {}
+    for sub, bases in bases_by_class.items():
+        for base in bases:
+            derived_by_class.setdefault(base, []).append(sub)
+
+    # Index methods/functions: class -> {name: id}
+    cursor.execute(
+        "SELECT id, parent_id, name, start_row, end_row, content_id, kind "
+        "FROM entities WHERE kind IN ('Method', 'Function')"
+    )
     method_rows = cursor.fetchall()
     method_owner_class: Dict[bytes, bytes] = {}
     methods_by_class: Dict[bytes, Dict[str, bytes]] = {}
-    for mid, parent_id, name, sr, er, cid in method_rows:
+    for mid, parent_id, name, sr, er, cid, _kind in method_rows:
         owner: Optional[bytes] = None
         if parent_id in class_ids:
             owner = parent_id
@@ -541,6 +702,27 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
         if owner is not None:
             method_owner_class[mid] = owner
             methods_by_class.setdefault(owner, {})[name] = mid
+
+    # Index functions for resolving function call edges.
+    cursor.execute("SELECT id, name, content_id FROM entities WHERE kind = 'Function'")
+    func_rows = cursor.fetchall()
+    function_ids_by_name: Dict[str, List[bytes]] = {}
+    function_content_id: Dict[bytes, bytes] = {}
+    for fid, fname, fcid in func_rows:
+        function_ids_by_name.setdefault(fname, []).append(fid)
+        function_content_id[fid] = fcid
+
+    def resolve_function_id_by_name(name: str, preferred_content_id: Optional[bytes]) -> Optional[bytes]:
+        ids = function_ids_by_name.get(name) or []
+        if not ids:
+            return None
+        if len(ids) == 1:
+            return ids[0]
+        if preferred_content_id is not None:
+            for fid in ids:
+                if function_content_id.get(fid) == preferred_content_id:
+                    return fid
+        return None
 
     # Index fields: class -> {name: id}. Include fields parented by the class and fields parented by a method under a class.
     cursor.execute("SELECT id, parent_id, name FROM entities WHERE kind = 'Field'")
@@ -585,6 +767,23 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
             queue.extend(bases_by_class.get(b, []))
         return None
 
+    def resolve_method_in_descendants(class_id: bytes, method_name: str) -> Optional[bytes]:
+        matches: Set[bytes] = set()
+        seen: Set[bytes] = set()
+        queue: List[bytes] = list(derived_by_class.get(class_id, []))
+        while queue:
+            cur = queue.pop(0)
+            if cur in seen:
+                continue
+            seen.add(cur)
+            mid = methods_by_class.get(cur, {}).get(method_name)
+            if mid is not None:
+                matches.add(mid)
+            queue.extend(derived_by_class.get(cur, []))
+        if len(matches) == 1:
+            return next(iter(matches))
+        return None
+
     # Heuristics for Python: var-name -> ClassName (snake_case to CamelCase),
     # and "unique method owner" when a method name appears on exactly one internal class.
     def guess_class_from_var(var: str, preferred_content_id: Optional[bytes]) -> Optional[bytes]:
@@ -610,6 +809,51 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
     if extend_added:
         print(f"Extend deps added (AST): {extend_added}")
 
+    # Pre-pass: infer field types (self.field = ClassName(...)) to resolve self.field.method calls.
+    field_types_by_class: Dict[bytes, Dict[str, Set[str]]] = {}
+    for cls_id, field_types in dataclass_field_types_by_class.items():
+        for fname, cls_name in field_types.items():
+            field_types_by_class.setdefault(cls_id, {}).setdefault(fname, set()).add(cls_name)
+
+    def resolve_field_type_from_descendants(class_id: bytes, field_name: str) -> Optional[str]:
+        matches: Set[str] = set()
+        seen: Set[bytes] = set()
+        queue: List[bytes] = list(derived_by_class.get(class_id, []))
+        while queue:
+            cur = queue.pop(0)
+            if cur in seen:
+                continue
+            seen.add(cur)
+            types = field_types_by_class.get(cur, {}).get(field_name)
+            if types:
+                matches.update(types)
+            queue.extend(derived_by_class.get(cur, []))
+        if len(matches) == 1:
+            return next(iter(matches))
+        return None
+
+    for method_id, parent_id, _method_name, method_start, method_end, content_id, _kind in method_rows:
+        owner_cls_id: Optional[bytes] = None
+        if parent_id in class_ids:
+            owner_cls_id = parent_id
+        else:
+            owner_cls_id = method_owner_class.get(method_id) or infer_owner_class_from_span(content_id, method_start, method_end)
+        if owner_cls_id is None:
+            continue
+
+        file_content = get_file_content(content_id, conn)
+        method_content = extract_method_lines(file_content, method_start, method_end)
+        if not method_content.strip():
+            continue
+        try:
+            tree = ast.parse(textwrap.dedent(method_content))
+        except SyntaxError:
+            continue
+        facts = _MethodBodyFacts(known_classes=known_class_names)
+        facts.visit(tree)
+        for field_name, cls_name in facts.field_type_assigns.items():
+            field_types_by_class.setdefault(owner_cls_id, {}).setdefault(field_name, set()).add(cls_name)
+
     existing_create_by_src: Dict[bytes, Set[bytes]] = {}
     if is_stackgraphs:
         # Create edges can be noisy from StackGraphs; prune them to actual constructor calls.
@@ -625,7 +869,7 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
             existing_create_by_src.setdefault(src_id, set()).add(tgt_id)
 
     # Analyze each method/function independently using AST.
-    for method_id, parent_id, method_name, method_start, method_end, content_id in method_rows:
+    for method_id, parent_id, method_name, method_start, method_end, content_id, _method_kind in method_rows:
         methods_analyzed += 1
         file_content = get_file_content(content_id, conn)
         method_content = extract_method_lines(file_content, method_start, method_end)
@@ -684,6 +928,8 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
             | set(facts.super_calls)
             | {m for _v, m in facts.var_calls}
             | {m for _cls, m in facts.class_calls}
+            | {m for _f, m in facts.field_calls}
+            | set(facts.func_calls)
         )
         resolved_call_targets_by_name: Dict[str, Set[bytes]] = {}
 
@@ -704,6 +950,21 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
                 existing.add(key)
                 new_deps_count += 1
 
+        # (A0.5) Method -> Class Use edges for isinstance(x, ClassName).
+        for cls_name in sorted(facts.isinstance_types):
+            cls_id = resolve_class_id_by_name(cls_name, content_id)
+            if cls_id is None:
+                continue
+            key = (method_id, cls_id, "Use")
+            if key in existing:
+                continue
+            cursor.execute(
+                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Use', ?, NULL)",
+                (method_id, cls_id, method_start),
+            )
+            existing.add(key)
+            new_deps_count += 1
+
         # (A) Method -> Field Use edges for self.<field>, including inherited fields.
         if owner_cls_id is not None:
             used_fields: List[str] = []
@@ -723,6 +984,24 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
                 used_fields.append(fname)
             if used_fields:
                 print(f"  {method_name} -> {_compress_field_hits(used_fields)} (Use)")
+
+        # (A1) Field -> Field Use edges for self.<field> assignments that reference other fields.
+        if owner_cls_id is not None and facts.field_assign_uses:
+            for tgt_name, src_name in sorted(facts.field_assign_uses):
+                tgt_fid = resolve_inherited_field(owner_cls_id, tgt_name)
+                src_fid = resolve_inherited_field(owner_cls_id, src_name)
+                if tgt_fid is None or src_fid is None:
+                    continue
+                key = (tgt_fid, src_fid, "Use")
+                if key in existing:
+                    continue
+                cursor.execute(
+                    "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Use', ?, NULL)",
+                    (tgt_fid, src_fid, method_start),
+                )
+                existing.add(key)
+                new_deps_count += 1
+                field_field_deps_added += 1
 
         # (B) self.method(...) -> Call to resolved method entity.
         if owner_cls_id is not None:
@@ -783,6 +1062,35 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
             existing.add(key)
             new_deps_count += 1
 
+        # (C2) self.field.method(...) -> Call using inferred field type.
+        if owner_cls_id is not None and facts.field_calls:
+            for field_name, callee in facts.field_calls:
+                cls_id: Optional[bytes] = None
+                cls_names = field_types_by_class.get(owner_cls_id, {}).get(field_name)
+                if not cls_names:
+                    inferred = resolve_field_type_from_descendants(owner_cls_id, field_name)
+                    if inferred:
+                        cls_names = {inferred}
+                if cls_names and len(cls_names) == 1:
+                    cls_id = resolve_class_id_by_name(next(iter(cls_names)), content_id)
+                if cls_id is None:
+                    continue
+                tgt_mid = resolve_method_in_hierarchy(cls_id, callee)
+                if tgt_mid is None:
+                    tgt_mid = resolve_method_in_descendants(cls_id, callee)
+                if tgt_mid is None:
+                    continue
+                resolved_call_targets_by_name.setdefault(callee, set()).add(tgt_mid)
+                key = (method_id, tgt_mid, "Call")
+                if key in existing:
+                    continue
+                cursor.execute(
+                    "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Call', ?, NULL)",
+                    (method_id, tgt_mid, method_start),
+                )
+                existing.add(key)
+                new_deps_count += 1
+
         # (D) var.method(...) with inferred var type -> Call.
         for var, callee in facts.var_calls:
             cls_id: Optional[bytes] = None
@@ -798,6 +1106,8 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
 
             tgt_mid = resolve_method_in_hierarchy(cls_id, callee)
             if tgt_mid is None:
+                tgt_mid = resolve_method_in_descendants(cls_id, callee)
+            if tgt_mid is None:
                 continue
             resolved_call_targets_by_name.setdefault(callee, set()).add(tgt_mid)
             key = (method_id, tgt_mid, "Call")
@@ -806,6 +1116,23 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
             cursor.execute(
                 "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Call', ?, NULL)",
                 (method_id, tgt_mid, method_start),
+            )
+            existing.add(key)
+            new_deps_count += 1
+
+        # (D3) function calls: foo(...) -> Call to local function entity.
+        for func_name in sorted(facts.func_calls):
+            if func_name in known_class_names:
+                continue
+            tgt_fid = resolve_function_id_by_name(func_name, content_id)
+            if tgt_fid is None:
+                continue
+            key = (method_id, tgt_fid, "Call")
+            if key in existing:
+                continue
+            cursor.execute(
+                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Call', ?, NULL)",
+                (method_id, tgt_fid, method_start),
             )
             existing.add(key)
             new_deps_count += 1
@@ -959,6 +1286,8 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
                             print(f"  {child_name}.{abstract_method_name} -> {parent_name}.{abstract_method_name} (Override)")
 
     print(f"\n[OK] Added {override_deps_count} Override dependencies")
+    if field_field_deps_added:
+        print(f"[OK] Added {field_field_deps_added} Field->Field Use dependencies")
 
     conn.commit()
     conn.close()
@@ -1030,6 +1359,8 @@ def fix_field_parent_ids(db_path: str) -> int:
 
         if canonical and canonical[0] != field_id:
             canonical_id = canonical[0]
+            cursor.execute("UPDATE deps SET src = ? WHERE src = ?", (canonical_id, field_id))
+            merged_deps_repointed += cursor.rowcount
             cursor.execute("UPDATE deps SET tgt = ? WHERE tgt = ?", (canonical_id, field_id))
             merged_deps_repointed += cursor.rowcount
             cursor.execute("DELETE FROM deps WHERE src = ? OR tgt = ?", (field_id, field_id))
@@ -1124,8 +1455,8 @@ def fix_field_parent_ids(db_path: str) -> int:
     conn.close()
     return updated_count
 
-def verify_enhancement(db_path: str):
-    """Verify that Method->Field dependencies were added."""
+def verify_enhancement(db_path: str) -> Tuple[int, int]:
+    """Verify that Method->Field and Field->Field dependencies were added."""
     conn = sqlite3.Connection(db_path)
     cursor = conn.cursor()
 
@@ -1139,6 +1470,16 @@ def verify_enhancement(db_path: str):
     """)
 
     method_field_count = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM deps d
+        JOIN entities e_src ON d.src = e_src.id
+        JOIN entities e_tgt ON d.tgt = e_tgt.id
+        WHERE e_src.kind = 'Field' AND e_tgt.kind = 'Field' AND d.kind = 'Use'
+    """)
+
+    field_field_count = cursor.fetchone()[0]
 
     # Show dependency breakdown
     cursor.execute("""
@@ -1163,7 +1504,7 @@ def verify_enhancement(db_path: str):
 
     conn.close()
 
-    return method_field_count
+    return method_field_count, field_field_count
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -1205,11 +1546,12 @@ def main() -> int:
     fields_fixed = fix_field_parent_ids(db_path)
 
     # Step 3: Verify
-    method_field_count = verify_enhancement(db_path)
+    method_field_count, field_field_count = verify_enhancement(db_path)
 
     print(f"\n{'='*70}")
     print("COMPLETE SUCCESS!")
     print(f"  - {method_field_count} Method->Field dependencies created")
+    print(f"  - {field_field_count} Field->Field dependencies created")
     print(f"  - {override_count} Override dependencies created")
     print(f"  - {fields_fixed} fields now siblings with methods")
     print(f"  - Database ready for Deicide hierarchical clustering!")
