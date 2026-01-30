@@ -648,7 +648,7 @@ def export_dv8_file_level(
     cur = con.cursor()
 
     file_ids = {eid for eid, e in entities.items() if e.kind == "File"}
-    file_name_by_id = {eid: entities[eid].name for eid in file_ids}
+    file_name_by_id = {eid: _normalize_file_name(entities[eid].name) for eid in file_ids}
 
     def in_focus(file_name: str) -> bool:
         if align_handcount and file_name.endswith("/__init__.py"):
@@ -786,12 +786,8 @@ def _display_name_with_file(
     file_name = file_name_by_id.get(file_id)
     if not file_name:
         return None
-    file_name = file_name.replace("\\", "/")
-    if file_name.startswith("./"):
-        file_name = file_name[2:]
+    file_name = _normalize_file_name(file_name)
     is_java = file_name.endswith(".java")
-    if is_java and file_name.startswith("src/"):
-        file_name = file_name[4:]
 
     ent = entities[entity_id]
     if ent.kind == "File":
@@ -1213,6 +1209,14 @@ def _aligned_file_node(file_name: str, dv8_hierarchy: str) -> str:
         return _handcount_file_node(file_name)
     return _structured_file_node(file_name)
 
+def _normalize_file_name(file_name: str) -> str:
+    file_name = file_name.replace("\\", "/")
+    if file_name.startswith("./"):
+        file_name = file_name[2:]
+    if file_name.endswith(".java") and file_name.startswith("src/"):
+        file_name = file_name[4:]
+    return file_name
+
 def _aligned_name(
     entities: Dict[bytes, DbEntity],
     entity_id: bytes,
@@ -1601,7 +1605,7 @@ def export_dv8_full_project(
     cur = con.cursor()
 
     file_ids = {eid for eid, e in entities.items() if e.kind == "File"}
-    file_name_by_id = {eid: entities[eid].name for eid in file_ids}
+    file_name_by_id = {eid: _normalize_file_name(entities[eid].name) for eid in file_ids}
 
     def in_focus(file_name: str) -> bool:
         if align_handcount and file_name.endswith("/__init__.py"):
@@ -1957,7 +1961,7 @@ def export_dv8_per_file(
         edges: List[Tuple[str, str, str]] = []
         if align_handcount:
             file_id_memo: Dict[bytes, Optional[bytes]] = {}
-            file_name_by_id = {eid: e.name for eid, e in entities.items() if e.kind == "File"}
+            file_name_by_id = {eid: _normalize_file_name(e.name) for eid, e in entities.items() if e.kind == "File"}
             class_folder_by_id: Optional[Dict[bytes, List[str]]] = None
             local_base_dotted_by_class_id: Optional[Dict[bytes, str]] = None
             if dv8_hierarchy == "structured":
@@ -2605,7 +2609,7 @@ def main() -> int:
     if dv8_hierarchy == "professor":
         dv8_hierarchy = "structured"
     align_handcount = bool(args.align_handcount) or bool(args.match_to_ts_config)
-    if align_handcount:
+    if args.match_to_ts_config:
         dv8_hierarchy = "handcount"
     collapse_weights = bool(args.collapse_weights)
     if align_handcount and not args.no_collapse_weights:

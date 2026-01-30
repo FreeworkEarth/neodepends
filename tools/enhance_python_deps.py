@@ -154,6 +154,7 @@ class _MethodBodyFacts(ast.NodeVisitor):
         self.field_calls: List[Tuple[str, str]] = []
         self.field_type_assigns: Dict[str, str] = {}
         self.class_attr_uses: Set[Tuple[str, str]] = set()
+        self.isinstance_types: Set[str] = set()
         self.class_calls: Set[Tuple[str, str]] = set()
         self.self_calls: Set[str] = set()
         self.super_calls: Set[str] = set()
@@ -255,7 +256,25 @@ class _MethodBodyFacts(ast.NodeVisitor):
                     self.field_assign_uses.add((node.target.attr, src))
         self.generic_visit(node)
 
+    @staticmethod
+    def _collect_isinstance_type_names(node: ast.AST) -> Set[str]:
+        names: Set[str] = set()
+        if isinstance(node, ast.Name):
+            names.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            names.add(node.attr)
+        elif isinstance(node, (ast.Tuple, ast.List)):
+            for elt in node.elts:
+                names |= _MethodBodyFacts._collect_isinstance_type_names(elt)
+        return names
+
     def visit_Call(self, node: ast.Call):
+        if isinstance(node.func, ast.Name) and node.func.id == "isinstance":
+            if len(node.args) >= 2:
+                for type_name in self._collect_isinstance_type_names(node.args[1]):
+                    if type_name in self.known_classes:
+                        self.isinstance_types.add(type_name)
+
         # Create: ClassName(...)
         if isinstance(node.func, ast.Name) and node.func.id in self.known_classes:
             self.creates.add(node.func.id)
@@ -930,6 +949,21 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
                 )
                 existing.add(key)
                 new_deps_count += 1
+
+        # (A0.5) Method -> Class Use edges for isinstance(x, ClassName).
+        for cls_name in sorted(facts.isinstance_types):
+            cls_id = resolve_class_id_by_name(cls_name, content_id)
+            if cls_id is None:
+                continue
+            key = (method_id, cls_id, "Use")
+            if key in existing:
+                continue
+            cursor.execute(
+                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Use', ?, NULL)",
+                (method_id, cls_id, method_start),
+            )
+            existing.add(key)
+            new_deps_count += 1
 
         # (A) Method -> Field Use edges for self.<field>, including inherited fields.
         if owner_cls_id is not None:
