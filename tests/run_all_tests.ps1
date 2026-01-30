@@ -128,7 +128,7 @@ if ($ToyRoot -and (Test-Path (Join-Path $ToyRoot "python\\first_godclass_antipat
 # Detect production README (client README) and skip doc/setup checks unless forced.
 $SkipDocs = $false
 $SkipSetup = $false
-if (Test-Path "README-clients.md" -and Test-Path "README.md") {
+if ((Test-Path "README-clients.md") -and (Test-Path "README.md")) {
     $readmeHash = (Get-FileHash "README.md").Hash
     $clientHash = (Get-FileHash "README-clients.md").Hash
     if ($readmeHash -eq $clientHash) {
