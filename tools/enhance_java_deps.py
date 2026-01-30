@@ -101,6 +101,27 @@ def _parse_param_names(signature: str) -> Set[str]:
     return names
 
 
+def _extract_cast_assignments(block: str) -> Dict[str, str]:
+    # Match: Type var = (CastType) expr;
+    # Match: var = (CastType) expr;
+    casts: Dict[str, str] = {}
+    pattern_decl = re.compile(
+        r"\b([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\(\s*([A-Za-z_][A-Za-z0-9_$.]*)\s*\)"
+    )
+    pattern_assign = re.compile(
+        r"\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\(\s*([A-Za-z_][A-Za-z0-9_$.]*)\s*\)"
+    )
+    for m in pattern_decl.finditer(block):
+        var = m.group(2)
+        cast_type = m.group(3).split(".")[-1]
+        casts[var] = cast_type
+    for m in pattern_assign.finditer(block):
+        var = m.group(1)
+        cast_type = m.group(2).split(".")[-1]
+        casts[var] = cast_type
+    return casts
+
+
 def _add_field_uses(
     *,
     block: str,
@@ -124,6 +145,13 @@ def _add_field_uses(
             if _add_dep(cur, existing, src_id, field.id, "Use"):
                 added += 1
     return added
+
+
+def _resolve_method_by_name(methods: List[Entity], name: str) -> Optional[Entity]:
+    for method in methods:
+        if method.name == name:
+            return method
+    return None
 
 
 def _constructor_block(content: str, start_row: int, end_row: int) -> str:
@@ -237,6 +265,31 @@ def enhance_java_dependencies(db_path: Path, source_root: Optional[Path] = None)
                     cur=cur,
                     existing=existing,
                 )
+
+            # Polymorphic calls after separate-line casts:
+            #   var = (CastType) question; var.method(...)
+            casts = _extract_cast_assignments(block)
+            if casts:
+                for m in re.finditer(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(", block):
+                    recv = m.group(1)
+                    callee = m.group(2)
+                    if recv in {"this", "super"}:
+                        continue
+                    cast_type = casts.get(recv)
+                    if not cast_type:
+                        continue
+                    tgt_class_id = class_by_file_and_name.get((file_id, cast_type))
+                    if tgt_class_id is None:
+                        candidates = class_by_name.get(cast_type) or []
+                        if len(candidates) == 1:
+                            tgt_class_id = candidates[0]
+                    if tgt_class_id is None:
+                        continue
+                    tgt_method = _resolve_method_by_name(methods_by_class.get(tgt_class_id, []), callee)
+                    if tgt_method is None:
+                        continue
+                    if _add_dep(cur, existing, method.id, tgt_method.id, "Call"):
+                        added_call += 1
 
         # Constructor chaining calls (explicit + implicit)
         for ctor in ctors:
