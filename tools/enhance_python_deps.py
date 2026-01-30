@@ -155,6 +155,7 @@ class _MethodBodyFacts(ast.NodeVisitor):
         self.field_type_assigns: Dict[str, str] = {}
         self.class_attr_uses: Set[Tuple[str, str]] = set()
         self.isinstance_types: Set[str] = set()
+        self.isinstance_types_by_var: Dict[str, Set[str]] = {}
         self.class_calls: Set[Tuple[str, str]] = set()
         self.self_calls: Set[str] = set()
         self.super_calls: Set[str] = set()
@@ -271,8 +272,12 @@ class _MethodBodyFacts(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call):
         if isinstance(node.func, ast.Name) and node.func.id == "isinstance":
             if len(node.args) >= 2:
-                for type_name in self._collect_isinstance_type_names(node.args[1]):
-                    if type_name in self.known_classes:
+                type_names = {t for t in self._collect_isinstance_type_names(node.args[1]) if t in self.known_classes}
+                if type_names:
+                    if isinstance(node.args[0], ast.Name):
+                        var = node.args[0].id
+                        self.isinstance_types_by_var.setdefault(var, set()).update(type_names)
+                    for type_name in type_names:
                         self.isinstance_types.add(type_name)
 
         # Create: ClassName(...)
@@ -922,6 +927,11 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
 
         env: Dict[str, str] = dict(anno_env)
         env.update(facts.env)
+        for var, types in facts.isinstance_types_by_var.items():
+            if var in env:
+                continue
+            if len(types) == 1:
+                env[var] = next(iter(types))
 
         called_names: Set[str] = (
             set(facts.self_calls)
