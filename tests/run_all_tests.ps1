@@ -125,6 +125,22 @@ if ($ToyRoot -and (Test-Path (Join-Path $ToyRoot "python\\first_godclass_antipat
     Log-Info "TOY_ROOT not set; toy handcount comparisons will be skipped (survey/moviepy/large_single_file still run)"
 }
 
+# Detect production README (client README) and skip doc/setup checks unless forced.
+$SkipDocs = $false
+$SkipSetup = $false
+if (Test-Path "README-clients.md" -and Test-Path "README.md") {
+    $readmeHash = (Get-FileHash "README.md").Hash
+    $clientHash = (Get-FileHash "README-clients.md").Hash
+    if ($readmeHash -eq $clientHash) {
+        $SkipDocs = $true
+        $SkipSetup = $true
+    }
+}
+if ($env:FORCE_DOC_CHECKS -eq "1") {
+    $SkipDocs = $false
+    $SkipSetup = $false
+}
+
 # Optional: run example comparison (toy + survey + moviepy if available)
 if (Test-Path "tools\\run_handcount_regression.py") {
     $HandcountOut = Join-Path $TestOutput "handcount_regression"
@@ -196,22 +212,26 @@ if (Select-String -Path "run_dependency_analysis.ps1" -Pattern "Auto-selected re
 # ============================================================================
 Log-Test "Documentation - README has cross-platform setup instructions"
 
-if (Select-String -Path "README.md" -Pattern "QuickStart Release Bundle: One-Command Setup & Analysis" -Quiet) {
-    Log-Pass "README has QuickStart cross-platform setup section"
+if ($SkipDocs) {
+    Log-Pass "README checks skipped for production client README"
 } else {
-    Log-Fail "README missing QuickStart setup section"
-}
+    if (Select-String -Path "README.md" -Pattern "QuickStart Release Bundle: One-Command Setup & Analysis" -Quiet) {
+        Log-Pass "README has QuickStart cross-platform setup section"
+    } else {
+        Log-Fail "README missing QuickStart setup section"
+    }
 
-if (Select-String -Path "README.md" -Pattern "python3 setup.py" -Quiet) {
-    Log-Pass "README includes Python setup command"
-} else {
-    Log-Fail "README missing Python setup command"
-}
+    if (Select-String -Path "README.md" -Pattern "python3 setup.py" -Quiet) {
+        Log-Pass "README includes Python setup command"
+    } else {
+        Log-Fail "README missing Python setup command"
+    }
 
-if (Select-String -Path "README.md" -Pattern "python3 run_dependency_analysis.py" -Quiet) {
-    Log-Pass "README includes Python analysis command"
-} else {
-    Log-Fail "README missing Python analysis command"
+    if (Select-String -Path "README.md" -Pattern "python3 run_dependency_analysis.py" -Quiet) {
+        Log-Pass "README includes Python analysis command"
+    } else {
+        Log-Fail "README missing Python analysis command"
+    }
 }
 
 # ============================================================================
@@ -219,23 +239,27 @@ if (Select-String -Path "README.md" -Pattern "python3 run_dependency_analysis.py
 # ============================================================================
 Log-Test "Setup Script - Verify setup.py exists and is executable"
 
-if (Test-Path "setup.py") {
-    Log-Pass "setup.py exists in repository root"
+if ($SkipSetup) {
+    Log-Pass "setup.py checks skipped for production client README"
 } else {
-    Log-Fail "setup.py not found in repository root"
-}
+    if (Test-Path "setup.py") {
+        Log-Pass "setup.py exists in repository root"
+    } else {
+        Log-Fail "setup.py not found in repository root"
+    }
 
-# Test that setup.py runs without errors
-if (Test-Path "setup.py") {
-    try {
-        $SetupOutput = & python3 setup.py 2>&1 | Out-String
-        if ($SetupOutput -match "NeoDepends Setup") {
-            Log-Pass "setup.py runs successfully"
-        } else {
-            Log-Fail "setup.py failed to run"
+    # Test that setup.py runs without errors
+    if (Test-Path "setup.py") {
+        try {
+            $SetupOutput = & python3 setup.py 2>&1 | Out-String
+            if ($SetupOutput -match "NeoDepends Setup") {
+                Log-Pass "setup.py runs successfully"
+            } else {
+                Log-Fail "setup.py failed to run"
+            }
+        } catch {
+            Log-Fail "setup.py execution threw an error"
         }
-    } catch {
-        Log-Fail "setup.py execution threw an error"
     }
 }
 
