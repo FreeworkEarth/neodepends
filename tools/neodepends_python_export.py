@@ -1730,7 +1730,7 @@ def export_dv8_full_project(
             # - Extend: Class -> Class
             # - Create: Method -> Class
             # - Call: Method -> Method
-            # - Use: Method -> Field (and Field -> Field for intra-class field uses)
+            # - Use: Method/Function/Constructor -> Field/Class (and Field -> Field for intra-class field uses)
             # - Override: Method -> Method
             if dep_kind == "Import" and not (src_kind == "File" and tgt_kind == "File"):
                 continue
@@ -1743,14 +1743,15 @@ def export_dv8_full_project(
             ):
                 continue
             if dep_kind == "Use" and not (
-                (src_kind in {"Method", "Function", "Constructor"} and tgt_kind == "Field") or (src_kind == "Field" and tgt_kind == "Field")
+                (src_kind in {"Method", "Function", "Constructor"} and tgt_kind in {"Field", "Class"})
+                or (src_kind == "Field" and tgt_kind == "Field")
             ):
                 continue
             if dep_kind == "Override" and not (
                 src_kind in {"Method", "Function", "Constructor"} and tgt_kind in {"Method", "Function", "Constructor"}
             ):
                 continue
-            if dep_kind == "Use" and _owner_class_entity(entities, src_id) is None:
+            if dep_kind == "Use" and tgt_kind == "Field" and _owner_class_entity(entities, src_id) is None:
                 # Handcount rules treat Use as "method/constructor uses its own fields" (self.field),
                 # not arbitrary cross-object attribute reads (e.g. `ticket.ticket_id` in `main()`).
                 continue
@@ -1761,11 +1762,8 @@ def export_dv8_full_project(
                 if src_kind not in {"Method", "Function"} or (src_kind == "Method" and entities[src_id].name not in {"__init__", "__new__"}):
                     continue
 
-            # Handcount rules treat "type coupling" (Method/Function -> Class Use) as noise by default,
-            # and Field -> Method edges as directionally wrong for "uses".
+            # Field -> Method edges are directionally wrong for "uses".
             # Some resolvers also model `super().__init__` as Method -> Class Call; drop those too.
-            if src_kind in {"Method", "Function"} and tgt_kind == "Class" and dep_kind != "Create":
-                continue
             if src_kind == "Field" and tgt_kind == "Method":
                 continue
             if src_kind == "Class" and tgt_kind == "Class" and dep_kind == "Use":
@@ -2002,7 +2000,9 @@ def export_dv8_per_file(
                     continue
                 if dep_kind == "Call" and not (src_ent.kind == "Method" and tgt_ent.kind == "Method"):
                     continue
-                if dep_kind == "Use" and not (src_ent.kind == "Method" and tgt_ent.kind == "Field"):
+                if dep_kind == "Use" and not (
+                    src_ent.kind in {"Method", "Function", "Constructor"} and tgt_ent.kind in {"Field", "Class"}
+                ):
                     continue
                 if dep_kind == "Override" and not (src_ent.kind == "Method" and tgt_ent.kind == "Method"):
                     continue
@@ -2011,9 +2011,7 @@ def export_dv8_per_file(
                     if src_ent.name not in {"__init__", "__new__"}:
                         continue
 
-                # Drop Method->Class Use (type coupling) and Field->Method edges for handcount alignment.
-                if src_ent.kind == "Method" and tgt_ent.kind == "Class" and dep_kind != "Create":
-                    continue
+                # Drop Field->Method edges for handcount alignment.
                 if src_ent.kind == "Field" and tgt_ent.kind == "Method":
                     continue
                 if src_ent.kind == "Class" and tgt_ent.kind == "Class" and dep_kind == "Use":
