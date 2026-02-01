@@ -344,7 +344,13 @@ def _compress_field_hits(field_names: List[str]) -> str:
         parts.append(f"{name} x{n}" if n > 1 else name)
     return ", ".join(parts)
 
-def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str = "depends") -> Tuple[int, int]:
+def enhance_python_dependencies(
+    db_path: str,
+    source_root: str,
+    *,
+    profile: str = "depends",
+    allow_ambiguous_types: bool = False,
+) -> Tuple[int, int, int]:
     """
     Enhance Python dependencies in a NeoDepends database.
 
@@ -927,11 +933,14 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
 
         env: Dict[str, str] = dict(anno_env)
         env.update(facts.env)
+        ambiguous_types_by_var: Dict[str, Set[str]] = {}
         for var, types in facts.isinstance_types_by_var.items():
             if var in env:
                 continue
             if len(types) == 1:
                 env[var] = next(iter(types))
+            elif allow_ambiguous_types:
+                ambiguous_types_by_var[var] = set(types)
 
         called_names: Set[str] = (
             set(facts.self_calls)
@@ -1103,32 +1112,60 @@ def enhance_python_dependencies(db_path: str, source_root: str, *, profile: str 
 
         # (D) var.method(...) with inferred var type -> Call.
         for var, callee in facts.var_calls:
-            cls_id: Optional[bytes] = None
+            cls_ids: List[bytes] = []
             cls_name = env.get(var)
             if cls_name:
                 cls_id = resolve_class_id_by_name(cls_name, content_id)
-            if cls_id is None:
+                if cls_id is not None:
+                    cls_ids.append(cls_id)
+            elif allow_ambiguous_types and var in ambiguous_types_by_var:
+                for name in sorted(ambiguous_types_by_var[var]):
+                    cls_id = resolve_class_id_by_name(name, content_id)
+                    if cls_id is not None:
+                        cls_ids.append(cls_id)
+
+            if not cls_ids and var in ambiguous_types_by_var:
+                # Conservative narrowing: if only one candidate type defines this method, use it.
+                candidates: List[bytes] = []
+                for name in sorted(ambiguous_types_by_var[var]):
+                    cls_id = resolve_class_id_by_name(name, content_id)
+                    if cls_id is None:
+                        continue
+                    if resolve_method_in_hierarchy(cls_id, callee) is not None:
+                        candidates.append(cls_id)
+                if len(candidates) == 1:
+                    cls_ids.append(candidates[0])
+                elif allow_ambiguous_types:
+                    cls_ids.extend(candidates)
+
+            if not cls_ids:
                 cls_id = guess_class_from_var(var, content_id)
-            if cls_id is None:
-                cls_id = unique_method_owner.get(callee)
-            if cls_id is None:
+                if cls_id is not None:
+                    cls_ids.append(cls_id)
+                else:
+                    cls_id = unique_method_owner.get(callee)
+                    if cls_id is not None:
+                        cls_ids.append(cls_id)
+
+            if not cls_ids:
                 continue
 
-            tgt_mid = resolve_method_in_hierarchy(cls_id, callee)
-            if tgt_mid is None:
-                tgt_mid = resolve_method_in_descendants(cls_id, callee)
-            if tgt_mid is None:
-                continue
-            resolved_call_targets_by_name.setdefault(callee, set()).add(tgt_mid)
-            key = (method_id, tgt_mid, "Call")
-            if key in existing:
-                continue
-            cursor.execute(
-                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Call', ?, NULL)",
-                (method_id, tgt_mid, method_start),
-            )
-            existing.add(key)
-            new_deps_count += 1
+            for cls_id in cls_ids:
+                tgt_mid = resolve_method_in_hierarchy(cls_id, callee)
+                if tgt_mid is None:
+                    tgt_mid = resolve_method_in_descendants(cls_id, callee)
+                if tgt_mid is None:
+                    continue
+                resolved_call_targets_by_name.setdefault(callee, set()).add(tgt_mid)
+                key = (method_id, tgt_mid, "Call")
+                if key in existing:
+                    continue
+                cursor.execute(
+                    "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Call', ?, NULL)",
+                    (method_id, tgt_mid, method_start),
+                )
+                existing.add(key)
+                new_deps_count += 1
 
         # (D3) function calls: foo(...) -> Call to local function entity.
         for func_name in sorted(facts.func_calls):
@@ -1521,6 +1558,11 @@ def main() -> int:
     parser.add_argument("database_path", type=str)
     parser.add_argument("source_root", nargs="?", default=None)
     parser.add_argument("--profile", choices=["depends", "stackgraphs"], default="depends")
+    parser.add_argument(
+        "--allow-ambiguous-types",
+        action="store_true",
+        help="Allow multi-type narrowing (e.g., isinstance(x, (A,B))) to resolve calls for all types",
+    )
     args = parser.parse_args()
 
     db_path = args.database_path
@@ -1541,7 +1583,12 @@ def main() -> int:
     # Steps 1-4: Add Method->Field dependencies, fix parents, detect overrides
     print("STEP 1: Adding Method->Field dependencies...")
     print("="*70)
-    new_deps, methods, override_count = enhance_python_dependencies(db_path, source_root, profile=profile)
+    new_deps, methods, override_count = enhance_python_dependencies(
+        db_path,
+        source_root,
+        profile=profile,
+        allow_ambiguous_types=bool(args.allow_ambiguous_types),
+    )
 
     print(f"\n{'='*70}")
     print(f"Steps 1 & 4 complete!")
