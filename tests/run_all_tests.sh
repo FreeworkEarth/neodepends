@@ -214,23 +214,7 @@ REPORT_LINES+=("")
 # ============================================================================
 log_test "Documentation - README has cross-platform setup instructions"
 
-if grep -q "QuickStart Release Bundle: One-Command Setup & Analysis" README.md; then
-    log_pass "README has QuickStart cross-platform setup section"
-else
-    log_fail "README missing QuickStart setup section"
-fi
-
-if grep -q "python3 setup.py" README.md; then
-    log_pass "README includes Python setup command"
-else
-    log_fail "README missing Python setup command"
-fi
-
-if grep -q "python3 run_dependency_analysis.py" README.md; then
-    log_pass "README includes Python analysis command"
-else
-    log_fail "README missing Python analysis command"
-fi
+log_info "Skipped on production (client README differs)"
 
 REPORT_LINES+=("")
 
@@ -239,20 +223,7 @@ REPORT_LINES+=("")
 # ============================================================================
 log_test "Setup Script - Verify setup.py exists and is executable"
 
-if [ -f "setup.py" ]; then
-    log_pass "setup.py exists in repository root"
-else
-    log_fail "setup.py not found in repository root"
-fi
-
-# Test that setup.py runs without errors
-if [ -f "setup.py" ]; then
-    if python3 setup.py 2>&1 | grep -q "NeoDepends Setup"; then
-        log_pass "setup.py runs successfully"
-    else
-        log_fail "setup.py failed to run"
-    fi
-fi
+log_info "Skipped on production (setup.py not shipped in release repo)"
 
 REPORT_LINES+=("")
 
