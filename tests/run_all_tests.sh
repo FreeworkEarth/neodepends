@@ -53,18 +53,6 @@ if [ -z "${TOY_ROOT:-}" ]; then
     fi
 fi
 
-# Detect production README (client README) and skip doc/setup checks unless forced.
-SKIP_DOC_CHECKS=0
-SKIP_SETUP_CHECKS=0
-if [ -f "README-clients.md" ] && cmp -s "README.md" "README-clients.md"; then
-    SKIP_DOC_CHECKS=1
-    SKIP_SETUP_CHECKS=1
-fi
-if [ "${FORCE_DOC_CHECKS:-}" = "1" ]; then
-    SKIP_DOC_CHECKS=0
-    SKIP_SETUP_CHECKS=0
-fi
-
 # Test output directory
 TEST_OUTPUT="$SCRIPT_DIR/test_output"
 rm -rf "$TEST_OUTPUT"
@@ -226,26 +214,22 @@ REPORT_LINES+=("")
 # ============================================================================
 log_test "Documentation - README has cross-platform setup instructions"
 
-if [ "$SKIP_DOC_CHECKS" = "1" ]; then
-    log_pass "README checks skipped for production client README"
+if grep -q "QuickStart Release Bundle: One-Command Setup & Analysis" README.md; then
+    log_pass "README has QuickStart cross-platform setup section"
 else
-    if grep -q "QuickStart Release Bundle: One-Command Setup & Analysis" README.md; then
-        log_pass "README has QuickStart cross-platform setup section"
-    else
-        log_fail "README missing QuickStart setup section"
-    fi
+    log_fail "README missing QuickStart setup section"
+fi
 
-    if grep -q "python3 setup.py" README.md; then
-        log_pass "README includes Python setup command"
-    else
-        log_fail "README missing Python setup command"
-    fi
+if grep -q "python3 setup.py" README.md; then
+    log_pass "README includes Python setup command"
+else
+    log_fail "README missing Python setup command"
+fi
 
-    if grep -q "python3 run_dependency_analysis.py" README.md; then
-        log_pass "README includes Python analysis command"
-    else
-        log_fail "README missing Python analysis command"
-    fi
+if grep -q "python3 run_dependency_analysis.py" README.md; then
+    log_pass "README includes Python analysis command"
+else
+    log_fail "README missing Python analysis command"
 fi
 
 REPORT_LINES+=("")
@@ -255,22 +239,18 @@ REPORT_LINES+=("")
 # ============================================================================
 log_test "Setup Script - Verify setup.py exists and is executable"
 
-if [ "$SKIP_SETUP_CHECKS" = "1" ]; then
-    log_pass "setup.py checks skipped for production client README"
+if [ -f "setup.py" ]; then
+    log_pass "setup.py exists in repository root"
 else
-    if [ -f "setup.py" ]; then
-        log_pass "setup.py exists in repository root"
-    else
-        log_fail "setup.py not found in repository root"
-    fi
+    log_fail "setup.py not found in repository root"
+fi
 
-    # Test that setup.py runs without errors
-    if [ -f "setup.py" ]; then
-        if python3 setup.py 2>&1 | grep -q "NeoDepends Setup"; then
-            log_pass "setup.py runs successfully"
-        else
-            log_fail "setup.py failed to run"
-        fi
+# Test that setup.py runs without errors
+if [ -f "setup.py" ]; then
+    if python3 setup.py 2>&1 | grep -q "NeoDepends Setup"; then
+        log_pass "setup.py runs successfully"
+    else
+        log_fail "setup.py failed to run"
     fi
 fi
 
