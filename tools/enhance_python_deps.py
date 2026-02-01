@@ -269,14 +269,24 @@ class _MethodBodyFacts(ast.NodeVisitor):
                 names |= _MethodBodyFacts._collect_isinstance_type_names(elt)
         return names
 
+    @staticmethod
+    def _recv_key(node: ast.AST) -> Optional[str]:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "self":
+            return f"self.{node.attr}"
+        if isinstance(node, ast.Subscript):
+            return _MethodBodyFacts._recv_key(node.value)
+        return None
+
     def visit_Call(self, node: ast.Call):
         if isinstance(node.func, ast.Name) and node.func.id == "isinstance":
             if len(node.args) >= 2:
                 type_names = {t for t in self._collect_isinstance_type_names(node.args[1]) if t in self.known_classes}
                 if type_names:
-                    if isinstance(node.args[0], ast.Name):
-                        var = node.args[0].id
-                        self.isinstance_types_by_var.setdefault(var, set()).update(type_names)
+                    recv_key = self._recv_key(node.args[0])
+                    if recv_key:
+                        self.isinstance_types_by_var.setdefault(recv_key, set()).update(type_names)
                     for type_name in type_names:
                         self.isinstance_types.add(type_name)
 
@@ -320,6 +330,13 @@ class _MethodBodyFacts(ast.NodeVisitor):
                 self.super_calls.add(attr)
                 self.generic_visit(node)
                 return
+
+            if isinstance(recv, ast.Subscript):
+                recv_key = self._recv_key(recv)
+                if recv_key:
+                    self.var_calls.append((recv_key, attr))
+                    self.generic_visit(node)
+                    return
 
             if isinstance(recv, ast.Name):
                 self.var_calls.append((recv.id, attr))
