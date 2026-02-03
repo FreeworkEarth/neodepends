@@ -8,7 +8,7 @@ Analyze dependencies between entities (classes, functions, files) in your source
 
 1. **Run the analyzer**:
 
-   **macOS**: If blocked, run `xattr -d com.apple.quarantine ./dependency-analyzer` first
+   **macOS**: If blocked, run `xattr -dr com.apple.quarantine ./*` first to unblock all files
 
    **Windows**: If you see "Windows protected your PC", click "More info" then "Run anyway"
 
