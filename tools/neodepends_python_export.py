@@ -206,7 +206,7 @@ def _run_and_tee(cmd: Sequence[str], *, logger: Any) -> float:
     """
     start = time.time()
     logger.line(f"[CMD] {' '.join(cmd)}")
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
     assert proc.stdout is not None
     for line in proc.stdout:
         logger.line(line.rstrip("\n"))
@@ -991,8 +991,8 @@ def _structured_name(
 
     # Java handcount uses a different path layout (no /CLASSES, no inner/subclass folders).
     if file_name.endswith(".java"):
-        if ent.kind == "File":
-            return _handcount_file_node(file_name)
+        #if ent.kind == "File":
+            #return _handcount_file_node(file_name)
 
         owner_cls = ent if ent.kind == "Class" else _owner_class_entity(entities, entity_id)
         cls_name = owner_cls.name if owner_cls is not None else None
