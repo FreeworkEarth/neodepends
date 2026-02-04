@@ -321,6 +321,32 @@ fn python_is_in_call_function(call: TsNode, byte: usize) -> bool {
     }
 }
 
+/// Check whether `node` sits inside an `isinstance(obj, Type)` call.
+/// Returns true when the reference originated from a type-check context,
+/// which is architecturally significant (Use dependency).
+fn python_in_isinstance_arg(node: TsNode, src: &[u8]) -> bool {
+    let mut cur = Some(node);
+    while let Some(n) = cur {
+        if n.kind() == "argument_list" {
+            if let Some(call) = n.parent() {
+                if call.kind() == "call" {
+                    if let Some(func) = call.child_by_field_name("function") {
+                        if func.kind() == "identifier" {
+                            if let Ok(name) = func.utf8_text(src) {
+                                if name == "isinstance" {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        cur = n.parent();
+    }
+    false
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PyDefKind {
     Class,
@@ -374,6 +400,12 @@ fn classify_stackgraph_dep(
 
     if python_in_class_bases(src_node) {
         return DepKind::Extend;
+    }
+
+    // isinstance(obj, TypeName) — the type reference is architecturally significant.
+    // Classify as Use explicitly for isinstance type arguments.
+    if python_in_isinstance_arg(src_node, src_content.as_bytes()) {
+        return DepKind::Use;
     }
 
     if let Some(call) = python_call_context(src_node) {

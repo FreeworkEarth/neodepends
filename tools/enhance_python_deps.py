@@ -155,11 +155,13 @@ class _MethodBodyFacts(ast.NodeVisitor):
         self.field_type_assigns: Dict[str, str] = {}
         self.class_attr_uses: Set[Tuple[str, str]] = set()
         self.isinstance_types: Set[str] = set()
+        self.isinstance_type_lines: List[Tuple[str, int]] = []   # (type_name, lineno) per call
         self.isinstance_types_by_var: Dict[str, Set[str]] = {}
         self.class_calls: Set[Tuple[str, str]] = set()
         self.self_calls: Set[str] = set()
         self.super_calls: Set[str] = set()
         self.var_calls: List[Tuple[str, str]] = []
+        self.isinstance_var_call_lines: List[Tuple[str, str, int]] = []  # (var, callee, lineno) for isinstance-guided vars only
         self.func_calls: Set[str] = set()
         self.creates: Set[str] = set()
         self.cls_create: bool = False
@@ -289,6 +291,7 @@ class _MethodBodyFacts(ast.NodeVisitor):
                         self.isinstance_types_by_var.setdefault(recv_key, set()).update(type_names)
                     for type_name in type_names:
                         self.isinstance_types.add(type_name)
+                        self.isinstance_type_lines.append((type_name, node.lineno))
 
         # Create: ClassName(...)
         if isinstance(node.func, ast.Name) and node.func.id in self.known_classes:
@@ -335,11 +338,15 @@ class _MethodBodyFacts(ast.NodeVisitor):
                 recv_key = self._recv_key(recv)
                 if recv_key:
                     self.var_calls.append((recv_key, attr))
+                    if recv_key in self.isinstance_types_by_var:
+                        self.isinstance_var_call_lines.append((recv_key, attr, node.lineno))
                     self.generic_visit(node)
                     return
 
             if isinstance(recv, ast.Name):
                 self.var_calls.append((recv.id, attr))
+                if recv.id in self.isinstance_types_by_var:
+                    self.isinstance_var_call_lines.append((recv.id, attr, node.lineno))
                 self.generic_visit(node)
                 return
 
@@ -987,18 +994,29 @@ def enhance_python_dependencies(
                 new_deps_count += 1
 
         # (A0.5) Method -> Class Use edges for isinstance(x, ClassName).
-        for cls_name in sorted(facts.isinstance_types):
+        # Emit one dep per isinstance call site (not collapsed) to match Java behavior.
+        # Each isinstance(x, Type) at a different line produces a separate dep.
+        isinstance_seen_rows: Set[Tuple[bytes, int]] = set()  # (cls_id, row) dedup
+        for cls_name, rel_lineno in facts.isinstance_type_lines:
             cls_id = resolve_class_id_by_name(cls_name, content_id)
             if cls_id is None:
                 continue
-            key = (method_id, cls_id, "Use")
-            if key in existing:
+            actual_row = method_start + rel_lineno - 1
+            row_key = (cls_id, actual_row)
+            if row_key in isinstance_seen_rows:
+                continue
+            isinstance_seen_rows.add(row_key)
+            # Skip if core already emitted this exact dep (same src/tgt/kind/row)
+            cursor.execute(
+                "SELECT 1 FROM deps WHERE src=? AND tgt=? AND kind='Use' AND row=? LIMIT 1",
+                (method_id, cls_id, actual_row),
+            )
+            if cursor.fetchone():
                 continue
             cursor.execute(
                 "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Use', ?, NULL)",
-                (method_id, cls_id, method_start),
+                (method_id, cls_id, actual_row),
             )
-            existing.add(key)
             new_deps_count += 1
 
         # (A) Method -> Field Use edges for self.<field>, including inherited fields.
@@ -1183,6 +1201,84 @@ def enhance_python_dependencies(
                 )
                 existing.add(key)
                 new_deps_count += 1
+
+        # (D2) Uncollapse polymorphic Call deps for isinstance-guided vars.
+        # The main (D) loop collapses duplicate (var, callee) pairs via `existing`.
+        # For isinstance-guided vars where the same (var, callee) appears at multiple
+        # distinct lines, replace the single method_start dep with per-line deps.
+        # Collect lines per (var, callee) pair.
+        poly_lines_by_pair: Dict[Tuple[str, str], List[int]] = {}
+        for var, callee, rel_lineno in facts.isinstance_var_call_lines:
+            pair = (var, callee)
+            poly_lines_by_pair.setdefault(pair, []).append(rel_lineno)
+        # Only uncollapse pairs that appear at multiple distinct lines.
+        for (var, callee), rel_lines in poly_lines_by_pair.items():
+            distinct_lines = sorted(set(rel_lines))
+            if len(distinct_lines) < 2:
+                continue
+            # Find the target method id that (D) already resolved.
+            key_prefix = (method_id, None, "Call")
+            # Re-resolve the target to find what was inserted.
+            tgt_mid = None
+            cls_ids_d2: List[bytes] = []
+            cls_name = env.get(var)
+            if cls_name:
+                cid = resolve_class_id_by_name(cls_name, content_id)
+                if cid is not None:
+                    cls_ids_d2.append(cid)
+            elif allow_ambiguous_types and var in ambiguous_types_by_var:
+                for name in sorted(ambiguous_types_by_var[var]):
+                    cid = resolve_class_id_by_name(name, content_id)
+                    if cid is not None:
+                        cls_ids_d2.append(cid)
+            if not cls_ids_d2 and var in ambiguous_types_by_var:
+                candidates_d2: List[bytes] = []
+                for name in sorted(ambiguous_types_by_var[var]):
+                    cid = resolve_class_id_by_name(name, content_id)
+                    if cid is None:
+                        continue
+                    if resolve_method_in_hierarchy(cid, callee) is not None:
+                        candidates_d2.append(cid)
+                if len(candidates_d2) == 1:
+                    cls_ids_d2.append(candidates_d2[0])
+                elif allow_ambiguous_types:
+                    cls_ids_d2.extend(candidates_d2)
+            if not cls_ids_d2:
+                cid = guess_class_from_var(var, content_id)
+                if cid is not None:
+                    cls_ids_d2.append(cid)
+                else:
+                    cid = unique_method_owner.get(callee)
+                    if cid is not None:
+                        cls_ids_d2.append(cid)
+            for cid in cls_ids_d2:
+                tgt_mid = resolve_method_in_hierarchy(cid, callee)
+                if tgt_mid is None:
+                    tgt_mid = resolve_method_in_descendants(cid, callee)
+                if tgt_mid is None:
+                    continue
+                # Delete the collapsed method_start dep inserted by (D).
+                cursor.execute(
+                    "DELETE FROM deps WHERE src=? AND tgt=? AND kind='Call' AND row=?",
+                    (method_id, tgt_mid, method_start),
+                )
+                deleted = cursor.rowcount
+                if deleted:
+                    new_deps_count -= deleted
+                # Insert per-line deps for each distinct call site.
+                for rel_ln in distinct_lines:
+                    actual_row = method_start + rel_ln - 1
+                    cursor.execute(
+                        "SELECT 1 FROM deps WHERE src=? AND tgt=? AND kind='Call' AND row=? LIMIT 1",
+                        (method_id, tgt_mid, actual_row),
+                    )
+                    if cursor.fetchone():
+                        continue
+                    cursor.execute(
+                        "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Call', ?, NULL)",
+                        (method_id, tgt_mid, actual_row),
+                    )
+                    new_deps_count += 1
 
         # (D3) function calls: foo(...) -> Call to local function entity.
         for func_name in sorted(facts.func_calls):
@@ -1446,6 +1542,7 @@ def fix_field_parent_ids(db_path: str) -> int:
 
     # After re-parenting/merging, some Use deps can become duplicates
     # (same src/tgt/kind) because multiple field entities collapse into one.
+    # Exclude Method->Class Use deps from collapsing (isinstance per-line deps).
     cursor.execute("""
         DELETE FROM deps
         WHERE kind = 'Use'
@@ -1454,6 +1551,10 @@ def fix_field_parent_ids(db_path: str) -> int:
               FROM deps
               WHERE kind = 'Use'
               GROUP BY src, tgt, kind
+          )
+          AND NOT (
+              src IN (SELECT id FROM entities WHERE kind = 'Method')
+              AND tgt IN (SELECT id FROM entities WHERE kind = 'Class')
           )
     """)
     deduped_use = cursor.rowcount
