@@ -112,6 +112,10 @@ if [ -n "$JAVA_ENHANCE_FLAG" ]; then
 fi
 CMD="$CMD --filter-architecture"
 
+# Disable override post-processing (now handled natively in core)
+# Note: --no-enhance is NOT used because enhance script still needed for Create dep cleanup
+CMD="$CMD --no-override"
+
 # For Python with stackgraphs, add stackgraphs-specific flags
 if [ "$LANGUAGE" == "python" ] && [ "$MODEL" == "stackgraphs" ]; then
     CMD="$CMD --stackgraphs-python-mode ast"

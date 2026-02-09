@@ -44,6 +44,7 @@ mod filesystem;
 mod languages;
 mod matrix;
 mod output;
+mod override_detection;
 mod resolution;
 mod sparse_vec;
 mod spec;
@@ -367,9 +368,21 @@ fn main() -> Result<()> {
 
     if should_extract(Resource::Deps) {
         log::info!("Extracting and writing deps...");
-        extractor.extract_deps(&structure_filespec).for_each(|v| {
-            writer.write_dep(v).unwrap();
-        });
+
+        // Collect deps for override detection
+        let deps: Vec<_> = extractor.extract_deps(&structure_filespec).collect();
+
+        // Detect override dependencies
+        let entities: Vec<_> = extractor.extract_entities(&structure_filespec).collect();
+        let override_deps = override_detection::detect_overrides(&entities, &deps, &fs);
+
+        // Write all deps
+        for dep in deps {
+            writer.write_dep(dep).unwrap();
+        }
+        for dep in override_deps {
+            writer.write_dep(dep).unwrap();
+        }
     }
 
     if should_extract(Resource::Changes) {

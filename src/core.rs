@@ -645,6 +645,7 @@ pub enum DepKind {
     Import,
     Link,
     MixIn,
+    Override,
     Parameter,
     Parent,
     Plugin,

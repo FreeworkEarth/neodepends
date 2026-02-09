@@ -224,6 +224,23 @@ impl StackGraphEval {
     }
 }
 
+/// Normalize a Python file path to a module path.
+///
+/// Python imports often expect flat module names even when files are in directories.
+/// For example, files in `src/` should be importable without the `src.` prefix.
+/// This function strips common source directory prefixes.
+fn normalize_python_module_path(filename: &str) -> String {
+    // Common source directory prefixes to strip
+    const SOURCE_PREFIXES: &[&str] = &["src/", "lib/", "source/", "python/", "py/"];
+
+    for prefix in SOURCE_PREFIXES {
+        if filename.starts_with(prefix) {
+            return filename[prefix.len()..].to_string();
+        }
+    }
+    filename.to_string()
+}
+
 /// Attempt to build a stack graph from a source file.
 ///
 /// Returns None if a stack graph could not be built.
@@ -234,8 +251,16 @@ fn build(sgl: &StackGraphLanguage, filename: &str, content: &str) -> Option<Stac
 
     let file_key = FileKey::from_content(filename.to_string(), content);
 
+    // For Python files, normalize the module path to strip source directory prefixes
+    let module_path = if filename.ends_with(".py") {
+        normalize_python_module_path(filename)
+    } else {
+        filename.to_string()
+    };
+
     let file = graph.get_or_create_file(filename);
-    let vars = Variables::new();
+    let mut vars = Variables::new();
+    vars.add("FILE_PATH".into(), module_path.into());
     sgl.build_stack_graph_into(&mut graph, file, content, &vars, &NoCancellation).ok()?;
 
     ForwardPartialPathStitcher::find_minimal_partial_path_set_in_file(
@@ -394,9 +419,9 @@ fn classify_stackgraph_dep(
     let src_node = ts_node_at_byte(src_root, src_byte);
     let tgt_node = ts_node_at_byte(tgt_root, tgt_byte);
 
-    if python_in_import_context(src_node) {
-        return DepKind::Import;
-    }
+    // Note: We intentionally don't classify imports as DepKind::Import.
+    // Instead, we let them resolve to their actual usage type (Use, Call, Create, Extend)
+    // which is more meaningful for architectural analysis like god class decomposition.
 
     if python_in_class_bases(src_node) {
         return DepKind::Extend;

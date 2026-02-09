@@ -1084,6 +1084,28 @@ inherit .parent_module
   edge arg_index -> @arg.output
 }
 
+;; Identifiers used as call arguments (including in isinstance) need reference resolution
+;; This ensures type references in isinstance(obj, Type) are captured
+(argument_list
+  (identifier) @name) @args
+{
+  attr (@name.ref) node_reference = @name
+  edge @name.output -> @args.local_scope
+  edge @args.local_scope -> @name.input
+  attr (@name.input) pop_node = @name
+  attr (@name.output) node_reference = @name
+}
+
+;; Identifiers in tuples within argument lists (e.g., isinstance(obj, (Type1, Type2)))
+(argument_list
+  (tuple
+    (identifier) @name))
+{
+  attr (@name.ref) node_reference = @name
+  edge @name.output -> @name.local_scope
+  attr (@name.output) node_reference = @name
+}
+
 (
   (call
     function: (identifier) @_fn_name) @call
@@ -1092,6 +1114,7 @@ inherit .parent_module
 {
   edge @call.output -> @call.class_super_scope
 }
+
 
 (list) @list
 {

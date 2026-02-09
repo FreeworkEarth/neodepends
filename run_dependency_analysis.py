@@ -71,7 +71,10 @@ def main():
         "--langs", language,
         "--resolver", model,
         "--dv8-hierarchy", "structured",
-        "--filter-architecture"
+        "--filter-architecture",
+        # Disable override post-processing (now handled natively in core)
+        # Note: enhance script still needed for Create dep cleanup
+        "--no-override"
     ]
 
     # For Python with stackgraphs, add stackgraphs-specific flags

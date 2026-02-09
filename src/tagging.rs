@@ -254,9 +254,23 @@ impl Capture {
         }
     }
 
-    fn find_parent_id(&self, captures: &HashSet<CaptureId>) -> Option<CaptureId> {
+    fn find_parent_id(&self, captures: &HashMap<CaptureId, Capture>) -> Option<CaptureId> {
+        // For Field entities, skip Method ancestors and go directly to Class or File.
+        // This handles Python `self.field = ...` in __init__ which has Method as immediate
+        // ancestor but should be parented under the Class.
+        if self.kind == EntityKind::Field {
+            for ancestor_id in &self.ancestor_ids {
+                if let Some(ancestor) = captures.get(ancestor_id) {
+                    if ancestor.kind == EntityKind::Class || ancestor.kind == EntityKind::File {
+                        return Some(*ancestor_id);
+                    }
+                }
+            }
+        }
+
+        // Default behavior: return first matching ancestor
         for ancestor_id in &self.ancestor_ids {
-            if captures.contains(&ancestor_id) {
+            if captures.contains_key(ancestor_id) {
                 return Some(*ancestor_id);
             }
         }
@@ -297,14 +311,16 @@ fn to_singleton_entity_set(filename: &str, content: &str) -> EntitySet {
     into_entity_set(captures, ContentId::from_content(content))
 }
 
-fn into_entity_set(captures: HashMap<CaptureId, Capture>, content_id: ContentId) -> EntitySet {
+fn into_entity_set(mut captures: HashMap<CaptureId, Capture>, content_id: ContentId) -> EntitySet {
     let mut entities = Vec::with_capacity(captures.len());
     let mut simple_ids = HashMap::with_capacity(captures.len());
     let mut entity_ids = HashMap::with_capacity(captures.len());
-    let capture_ids = captures.keys().map(|&k| k).collect::<HashSet<_>>();
 
-    for capture in captures.into_values().sorted_by_cached_key(|c| c.topo_key()) {
-        let parent_capture_id = capture.find_parent_id(&capture_ids);
+    // Sort captures by topo_key to process in correct order
+    let sorted_captures: Vec<_> = captures.values().sorted_by_cached_key(|c| c.topo_key()).cloned().collect();
+
+    for capture in sorted_captures {
+        let parent_capture_id = capture.find_parent_id(&captures);
 
         let parent_simple_id = parent_capture_id.map(|id| *simple_ids.get(&id).unwrap());
         let simple_id = SimpleEntityId::new(parent_simple_id, &capture.name, capture.kind);
