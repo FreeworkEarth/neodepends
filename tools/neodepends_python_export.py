@@ -67,6 +67,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
+from pipeline_errors import (
+    PreflightError, ExecutionError, EnhancementError, ExportError,
+    handle_pipeline_error,
+    check_binary_executable, check_langs, check_input_inside_project_root,
+    check_enhance_script, check_filter_script, check_output_dir_not_dangling_symlink,
+    warn_no_source_files,
+    check_filtered_db_valid, check_db_integrity_after_enhancement,
+    warn_no_enhance, wrap_subprocess_error,
+    check_db_created, check_db_non_empty,
+    warn_empty_entities, safe_summarize_db, safe_summarize_dv8_dir,
+)
+
 
 def _get_python_executable() -> str:
     """
@@ -128,26 +140,56 @@ class DbEntity:
 
 
 class _Logger:
+    """Developer log: all subprocess output and internal detail, written only to a file."""
+
     def __init__(self, log_path: Path) -> None:
         self.log_path = log_path
+        log_path.parent.mkdir(parents=True, exist_ok=True)
         self._fp = log_path.open("w", encoding="utf-8")
 
     def close(self) -> None:
         self._fp.close()
 
     def line(self, msg: str = "") -> None:
-        sys.stdout.write(msg + "\n")
-        sys.stdout.flush()
         self._fp.write(msg + "\n")
         self._fp.flush()
 
+
 class _StdoutLogger:
+    """Fallback dev logger when no file is requested: writes to stdout."""
+
     def line(self, msg: str = "") -> None:
         sys.stdout.write(msg + "\n")
         sys.stdout.flush()
 
     def close(self) -> None:
         return
+
+
+class _UserLogger:
+    """User-facing logger: concise progress messages written to stdout."""
+
+    def __init__(self) -> None:
+        self._step = 0
+
+    def step(self, msg: str) -> None:
+        """Print a numbered pipeline step."""
+        self._step += 1
+        sys.stdout.write(f"  [{self._step}] {msg}\n")
+        sys.stdout.flush()
+
+    def info(self, msg: str) -> None:
+        """Print an informational line (indented, no step number)."""
+        sys.stdout.write(f"      {msg}\n")
+        sys.stdout.flush()
+
+    def ok(self, msg: str) -> None:
+        sys.stdout.write(f"  OK  {msg}\n")
+        sys.stdout.flush()
+
+    def warn(self, msg: str) -> None:
+        sys.stdout.write(f"  !!  {msg}\n")
+        sys.stdout.flush()
 
 
 def _find_dir_named(start: Path, name: str) -> Optional[Path]:
@@ -182,11 +224,19 @@ def _resolve_path_arg(path: Path, *, prefer_agent_root: bool, must_exist: bool, 
 
     resolved = resolved.expanduser().resolve(strict=False)
 
-    if must_exist and not resolved.exists():
-        raise FileNotFoundError(
-            f"{kind} path does not exist: {resolved}\n"
-            f"Tip: pass an absolute path (starts with `/`) or run this script from the `AGENT/` workspace root."
-        )
+    if must_exist:
+        try:
+            accessible = resolved.exists()
+        except PermissionError:
+            raise PreflightError(
+                f"Cannot access {kind} path — permission denied: {resolved}\n"
+                "       Check that you have read access to this path."
+            )
+        if not accessible:
+            raise FileNotFoundError(
+                f"{kind} path does not exist: {resolved}\n"
+                f"Tip: pass an absolute path (starts with `/`) or run this script from the `AGENT/` workspace root."
+            )
 
     return resolved
 
@@ -207,7 +257,12 @@ def _run_and_tee(cmd: Sequence[str], *, logger: Any) -> float:
     start = time.time()
     logger.line(f"[CMD] {' '.join(cmd)}")
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    assert proc.stdout is not None
+    if proc.stdout is None:
+        proc.kill()
+        raise RuntimeError(
+            "An internal error occurred while starting the analysis engine.\n"
+            "       Please contact the development team and share the dev log."
+        )
     for line in proc.stdout:
         logger.line(line.rstrip("\n"))
     rc = proc.wait()
@@ -756,6 +811,7 @@ def export_dv8_file_level(
             else:
                 values[k] = values.get(k, 0.0) + 1.0
         cells = [{"src": s, "dest": t, "values": v} for (s, t), v in sorted(cell_map.items())]
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(
             json.dumps({"@schemaVersion": "1.0", "name": "dependencies (file-level)", "variables": variables, "cells": cells}, indent=2),
             encoding="utf-8",
@@ -2089,8 +2145,15 @@ def export_dv8_per_file(
         )
         if align_handcount:
             dv8_obj = _dv8_reorder_dependency_json(dv8_obj, sort_key=_dv8_sort_key_for_hierarchy(dv8_hierarchy))
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(dv8_obj, indent=2), encoding="utf-8")
+        try:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(json.dumps(dv8_obj, indent=2), encoding="utf-8")
+        except PermissionError as exc:
+            raise ExportError(
+                f"Cannot write results to the output directory: {out_path.parent}\n"
+                "       Check that you have permission to write to that location,\n"
+                "       or choose a different output directory and run again."
+            ) from exc
 
         if write_clustering and not align_handcount:
             clustering = build_class_folder_clustering(
@@ -2483,9 +2546,15 @@ def main() -> int:
     output_root: Path = _resolve_path_arg(
         args.output_dir, prefer_agent_root=True, must_exist=False, kind="Output directory"
     )
-    output_root.mkdir(parents=True, exist_ok=True)
-
     langs = [x.strip() for x in args.langs.split(",") if x.strip()]
+
+    # --- Pre-flight checks (before any output directories are created) ---
+    check_output_dir_not_dangling_symlink(output_root)
+    check_binary_executable(neodepends_bin)
+    check_langs(langs, args.langs)
+    warn_no_source_files(focus_path, langs)
+
+    output_root.mkdir(parents=True, exist_ok=True)
     include_external = bool(args.include_external_targets) and not bool(args.exclude_external_targets)
     per_file = bool(args.per_file_dbs) and not bool(args.no_per_file_dbs)
     include_incoming = bool(args.include_incoming) and not bool(args.exclude_incoming)
@@ -2517,6 +2586,9 @@ def main() -> int:
         # Prefer the vendored script inside this repo for self-contained releases.
         local = Path(__file__).resolve().parent / "filter_false_positives.py"
         filter_fp_script = local if local.exists() else (Path(__file__).resolve().parents[2] / "filter_false_positives.py")
+
+    check_enhance_script(enhance_script, langs, bool(getattr(args, 'no_enhance', False)))
+    check_filter_script(filter_fp_script, bool(getattr(args, 'filter_stackgraphs_false_positives', False)), args.resolver)
 
     def detect_project_root_and_focus_prefix() -> Tuple[Path, Optional[str]]:
         """
@@ -2602,6 +2674,7 @@ def main() -> int:
         return focus_path.parent, f"{pkg_name}/"
 
     project_root, focus_prefix = detect_project_root_and_focus_prefix()
+    check_input_inside_project_root(focus_path, project_root)
     include_root_py = focus_prefix is not None
     dv8_hierarchy = str(args.dv8_hierarchy)
     if dv8_hierarchy == "professor":
@@ -2624,7 +2697,8 @@ def main() -> int:
         data_dir.mkdir(parents=True, exist_ok=True)
         terminal_path = args.terminal_output
         if terminal_path is None:
-            terminal_path = data_dir / "terminal_output.txt"
+            dev_log_dir = data_dir / "dev_log"
+            terminal_path = dev_log_dir / "dev_log.txt"
         terminal_path = _resolve_path_arg(
             terminal_path, prefer_agent_root=True, must_exist=False, kind="Terminal output"
         )
@@ -2634,6 +2708,7 @@ def main() -> int:
             logger = _StdoutLogger()
         else:
             logger = _Logger(terminal_path)
+        ulog = _UserLogger()
         try:
             logger.line(f"timestamp: {_dt.datetime.now().isoformat()}")
             logger.line(f"resolver: {resolver}")
@@ -2643,6 +2718,11 @@ def main() -> int:
                 logger.line(f"focus_prefix: {focus_prefix}")
             logger.line(f"output: {out_dir}")
             logger.line("")
+
+            sys.stdout.write(f"\nAnalyzing: {focus_path}\n")
+            sys.stdout.write(f"Output:    {out_dir}\n")
+            sys.stdout.write(f"Resolver:  {resolver}\n\n")
+            sys.stdout.flush()
 
             stackgraphs_mode = stackgraphs_python_mode_override or args.stackgraphs_python_mode
             option_tag = resolver if resolver == "depends" else f"stackgraphs_{_safe_tag(stackgraphs_mode)}"
@@ -2667,20 +2747,27 @@ def main() -> int:
             t_neodep = _run_and_tee([str(neodepends_bin), "--version"], logger=logger)
             _ = t_neodep  # keep elapsed for future if needed
 
+            ulog.step(f"Scanning source files and extracting dependencies ({resolver})")
             t1 = time.time()
-            run_neodepends(
-                neodepends_bin=neodepends_bin,
-                input_dir=project_root,
-                db_out=db_path,
-                resolver=resolver,
-                langs=langs,
-                depends_jar=args.depends_jar,
-                java_bin=args.depends_java,
-                xmx=args.depends_xmx,
-                stackgraphs_python_mode=stackgraphs_mode,
-                logger=logger,
-            )
+            try:
+                run_neodepends(
+                    neodepends_bin=neodepends_bin,
+                    input_dir=project_root,
+                    db_out=db_path,
+                    resolver=resolver,
+                    langs=langs,
+                    depends_jar=args.depends_jar,
+                    java_bin=args.depends_java,
+                    xmx=args.depends_xmx,
+                    stackgraphs_python_mode=stackgraphs_mode,
+                    logger=logger,
+                )
+            except subprocess.CalledProcessError as exc:
+                raise wrap_subprocess_error(exc, f"NeoDepends ({resolver})")
             elapsed_neodepends = time.time() - t1
+            ulog.info(f"Done in {elapsed_neodepends:.1f}s")
+            check_db_created(db_path, project_root, resolver)
+            check_db_non_empty(db_path, focus_prefix, project_root)
 
             elapsed_enhance = 0.0
             raw_exported = False
@@ -2689,6 +2776,7 @@ def main() -> int:
             if "python" in langs:
                 shutil.copyfile(db_path, raw_db_path)
 
+                ulog.step("Saving pre-enhancement snapshot")
                 # Export a raw snapshot before any enhancement mutates the DB.
                 t_raw = time.time()
                 export_dv8_per_file(
@@ -2739,17 +2827,22 @@ def main() -> int:
                 # We intentionally filter the *raw* DB before enhancement runs, because the enhancement
                 # step inserts deps at method_start rows and could be incorrectly removed by the filter.
                 if resolver == "stackgraphs" and bool(args.filter_stackgraphs_false_positives):
+                    ulog.step("Filtering StackGraphs false positives")
                     if not filter_fp_script.exists():
                         raise FileNotFoundError(f"false-positive filter script not found: {filter_fp_script}")
                     if filtered_raw_db_path.exists():
                         filtered_raw_db_path.unlink()
 
-                    run_stackgraphs_false_positive_filter(
-                        filter_script=filter_fp_script,
-                        input_db=raw_db_path,
-                        output_db=filtered_raw_db_path,
-                        logger=logger,
-                    )
+                    try:
+                        run_stackgraphs_false_positive_filter(
+                            filter_script=filter_fp_script,
+                            input_db=raw_db_path,
+                            output_db=filtered_raw_db_path,
+                            logger=logger,
+                        )
+                    except subprocess.CalledProcessError as exc:
+                        raise wrap_subprocess_error(exc, "StackGraphs false-positive filter", filter_fp_script)
+                    check_filtered_db_valid(filtered_raw_db_path, db_path)
 
                     # Export filtered-raw DV8 snapshots for debugging.
                     export_dv8_per_file(
@@ -2798,38 +2891,59 @@ def main() -> int:
                     shutil.copyfile(filtered_raw_db_path, db_path)
                     used_filtered_db = True
 
+                if args.no_enhance:
+                    warn_no_enhance(ulog)
                 if not args.no_enhance:
                     if not enhance_script.exists():
                         raise FileNotFoundError(f"enhance script not found: {enhance_script}")
+                    ulog.step("Enhancing Python dependencies (field references, constructors)")
                     t2 = time.time()
-                    run_python_enhancement(
-                        enhance_script=enhance_script,
-                        db_path=db_path,
-                        profile=resolver,
-                        logger=logger,
-                    )
+                    try:
+                        run_python_enhancement(
+                            enhance_script=enhance_script,
+                            db_path=db_path,
+                            profile=resolver,
+                            logger=logger,
+                        )
+                    except subprocess.CalledProcessError as exc:
+                        raise wrap_subprocess_error(exc, "Python enhancement", enhance_script)
                     elapsed_enhance = time.time() - t2
+                    ulog.info(f"Done in {elapsed_enhance:.1f}s")
             else:
                 elapsed_raw_export = 0.0
 
                 # Java override detection: detect @Override annotations and insert Override edges.
                 if not args.no_override and override_script.exists():
                     logger.line(f"\n[OVERRIDE] Running Java override detection: {override_script}")
-                    run_override_detection(
-                        override_script=override_script,
-                        db_path=db_path,
-                        source_root=project_root,
-                        logger=logger,
-                    )
+                    ulog.step("Detecting Java @Override annotations")
+                    try:
+                        run_override_detection(
+                            override_script=override_script,
+                            db_path=db_path,
+                            source_root=project_root,
+                            logger=logger,
+                        )
+                    except subprocess.CalledProcessError as exc:
+                        raise wrap_subprocess_error(exc, "Java override detection", override_script)
                 if not args.no_java_enhance and java_enhance_script.exists():
                     logger.line(f"\n[JAVA] Running Java dependency enhancement: {java_enhance_script}")
-                    run_java_enhancement(
-                        enhance_script=java_enhance_script,
-                        db_path=db_path,
-                        source_root=project_root,
-                        logger=logger,
-                    )
+                    ulog.step("Enhancing Java dependencies (constructor heuristics)")
+                    try:
+                        run_java_enhancement(
+                            enhance_script=java_enhance_script,
+                            db_path=db_path,
+                            source_root=project_root,
+                            logger=logger,
+                        )
+                    except subprocess.CalledProcessError as exc:
+                        raise wrap_subprocess_error(exc, "Java dependency enhancement", java_enhance_script)
 
+            check_db_integrity_after_enhancement(db_path)
+            with _connect_ro(db_path) as _chk:
+                _entity_count = _chk.execute("SELECT COUNT(*) FROM entities").fetchone()[0]
+            if _entity_count == 0:
+                warn_empty_entities(ulog, project_root, focus_prefix)
+            ulog.step("Building dependency matrices (DV8 export)")
             t3 = time.time()
             export_dv8_per_file(
                 db_path=db_path,
@@ -2845,6 +2959,7 @@ def main() -> int:
                 collapse_weights=collapse_weights,
             )
             elapsed_dv8 = time.time() - t3
+            ulog.info(f"Done in {elapsed_dv8:.1f}s")
 
             if file_level_dv8:
                 export_dv8_file_level(
@@ -2876,6 +2991,7 @@ def main() -> int:
 
             elapsed_per_file = 0.0
             if per_file:
+                ulog.step("Exporting per-file dependency databases")
                 t4 = time.time()
                 export_per_file_dbs(
                     db_path=db_path,
@@ -2931,17 +3047,18 @@ def main() -> int:
                     "dv8_export": elapsed_dv8,
                     "per_file_db_export": elapsed_per_file,
                 },
-                "db_summary": _summarize_db(db_path),
-                "dv8_summary": _summarize_dv8_dir(data_dir / "dv8_deps"),
-                "raw_db_summary": _summarize_db(raw_db_path) if raw_db_path.exists() else None,
-                "raw_dv8_summary": _summarize_dv8_dir(raw_out_dir / "dv8_deps") if raw_exported else None,
-                "filtered_raw_db_summary": _summarize_db(filtered_raw_db_path) if filtered_raw_db_path.exists() else None,
-                "raw_filtered_dv8_summary": _summarize_dv8_dir(raw_filtered_out_dir / "dv8_deps")
+                "db_summary": safe_summarize_db(db_path),
+                "dv8_summary": safe_summarize_dv8_dir(data_dir / "dv8_deps"),
+                "raw_db_summary": safe_summarize_db(raw_db_path) if raw_db_path.exists() else None,
+                "raw_dv8_summary": safe_summarize_dv8_dir(raw_out_dir / "dv8_deps") if raw_exported else None,
+                "filtered_raw_db_summary": safe_summarize_db(filtered_raw_db_path) if filtered_raw_db_path.exists() else None,
+                "raw_filtered_dv8_summary": safe_summarize_dv8_dir(raw_filtered_out_dir / "dv8_deps")
                 if raw_filtered_exported
                 else None,
             }
             (data_dir / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
+            # Log full file listing to dev log only
             logger.line("")
             logger.line(f"[OK] Main DB: {db_path}")
             if full_dv8:
@@ -2970,8 +3087,27 @@ def main() -> int:
             if per_file:
                 logger.line(f"  - Per-file DBs: {data_dir / 'per_file_dbs'}")
             logger.line(f"  - Run summary: {data_dir / 'run_summary.json'}")
+            logger.line(f"[OK] Dev log: {terminal_path}")
+
+            # User-facing completion summary
+            db_s = summary.get("db_summary") or {}
+            total_elapsed = sum(summary["timings_sec"].values())
+            sys.stdout.write(f"\nDone in {total_elapsed:.1f}s\n")
+            sys.stdout.write(f"  Entities: {db_s.get('entities_total', '?')}  "
+                             f"(files: {db_s.get('files_total', '?')}, "
+                             f"classes: {db_s.get('classes_total', '?')}, "
+                             f"methods: {db_s.get('methods_total', '?')})\n")
+            deps_by_kind = db_s.get("deps_by_kind") or {}
+            if deps_by_kind:
+                dep_str = ", ".join(f"{k}: {v}" for k, v in sorted(deps_by_kind.items()))
+                sys.stdout.write(f"  Dependencies: {dep_str}\n")
+            if full_dv8:
+                sys.stdout.write(f"\n  Main result:  {full_dep_out_path}\n")
+            sys.stdout.write(f"  Data folder:  {data_dir}\n")
             if not args.no_terminal_output:
-                logger.line(f"[OK] Terminal output: {terminal_path}")
+                sys.stdout.write(f"  Dev log:      {terminal_path}\n")
+            sys.stdout.write("\n")
+            sys.stdout.flush()
 
             return summary
         finally:
@@ -2982,14 +3118,26 @@ def main() -> int:
         sg_ast_dir = output_root / "stackgraphs_ast"
         sg_useonly_dir = output_root / "stackgraphs_useonly"
 
-        depends_summary = run_one(resolver="depends", out_dir=depends_dir)
-        sg_ast_summary = run_one(resolver="stackgraphs", out_dir=sg_ast_dir, stackgraphs_python_mode_override="ast")
-        sg_useonly_summary = run_one(
-            resolver="stackgraphs", out_dir=sg_useonly_dir, stackgraphs_python_mode_override="use-only"
-        )
+        dev_log_hint = output_root / "data" / "dev_log" / "dev_log.txt"
+        try:
+            depends_summary = run_one(resolver="depends", out_dir=depends_dir)
+            sg_ast_summary = run_one(resolver="stackgraphs", out_dir=sg_ast_dir, stackgraphs_python_mode_override="ast")
+            sg_useonly_summary = run_one(
+                resolver="stackgraphs", out_dir=sg_useonly_dir, stackgraphs_python_mode_override="use-only"
+            )
+        except (PreflightError, ExecutionError, EnhancementError, ExportError) as exc:
+            return handle_pipeline_error(exc, dev_log_hint)
+        except subprocess.CalledProcessError as exc:
+            return handle_pipeline_error(
+                ExecutionError(
+                    f"Dependency analysis failed (exit code {exc.returncode}).\n"
+                    "       Check the dev log for the full output."
+                ),
+                dev_log_hint,
+            )
 
         comparison: Dict[str, Any] = {
-            "input_dir": str(focus_dir),
+            "input_dir": str(focus_path),
             "project_root": str(project_root),
             "focus_prefix": focus_prefix,
             "include_root_py": include_root_py,
@@ -3006,11 +3154,23 @@ def main() -> int:
         depends_dir = output_root / "depends"
         stack_dir = output_root / "stackgraphs_ast"
 
-        depends_summary = run_one(resolver="depends", out_dir=depends_dir)
-        stack_summary = run_one(resolver="stackgraphs", out_dir=stack_dir)
+        dev_log_hint = output_root / "data" / "dev_log" / "dev_log.txt"
+        try:
+            depends_summary = run_one(resolver="depends", out_dir=depends_dir)
+            stack_summary = run_one(resolver="stackgraphs", out_dir=stack_dir)
+        except (PreflightError, ExecutionError, EnhancementError, ExportError) as exc:
+            return handle_pipeline_error(exc, dev_log_hint)
+        except subprocess.CalledProcessError as exc:
+            return handle_pipeline_error(
+                ExecutionError(
+                    f"Dependency analysis failed (exit code {exc.returncode}).\n"
+                    "       Check the dev log for the full output."
+                ),
+                dev_log_hint,
+            )
 
         comparison: Dict[str, Any] = {
-            "input_dir": str(focus_dir),
+            "input_dir": str(focus_path),
             "project_root": str(project_root),
             "focus_prefix": focus_prefix,
             "output_root": str(output_root),
@@ -3024,10 +3184,12 @@ def main() -> int:
             return {k: int(a.get(k, 0) - b.get(k, 0)) for k in sorted(keys)}
 
         comparison["diff"]["db_deps_by_kind_depends_minus_stackgraphs"] = _diff_counts(
-            depends_summary["db_summary"]["deps_by_kind"], stack_summary["db_summary"]["deps_by_kind"]
+            (depends_summary.get("db_summary") or {}).get("deps_by_kind") or {},
+            (stack_summary.get("db_summary") or {}).get("deps_by_kind") or {},
         )
         comparison["diff"]["dv8_totals_depends_minus_stackgraphs"] = _diff_counts(
-            depends_summary["dv8_summary"]["totals"], stack_summary["dv8_summary"]["totals"]
+            (depends_summary.get("dv8_summary") or {}).get("totals") or {},
+            (stack_summary.get("dv8_summary") or {}).get("totals") or {},
         )
 
         (output_root / "comparison.json").write_text(json.dumps(comparison, indent=2), encoding="utf-8")
@@ -3053,7 +3215,21 @@ def main() -> int:
         sys.stdout.flush()
         return 0
 
-    _ = run_one(resolver=args.resolver, out_dir=output_root)
+    dev_log_hint = output_root / "data" / "dev_log" / "dev_log.txt"
+    try:
+        _ = run_one(resolver=args.resolver, out_dir=output_root)
+    except (PreflightError, ExecutionError, EnhancementError, ExportError) as exc:
+        return handle_pipeline_error(exc, dev_log_hint)
+    except subprocess.CalledProcessError as exc:
+        return handle_pipeline_error(
+            ExecutionError(
+                f"Dependency analysis failed (exit code {exc.returncode}).\n"
+                "       Check the dev log for the full output."
+            ),
+            dev_log_hint,
+        )
+    except FileNotFoundError as exc:
+        return handle_pipeline_error(exc, dev_log_hint)
     return 0
 
 
