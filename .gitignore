@@ -21,3 +21,7 @@ TEST_AUTO/
 CHANGELOG.md
 CONTRIBUTING.md
 RELEASING.md
+
+# Built files
+dist/
+build/
