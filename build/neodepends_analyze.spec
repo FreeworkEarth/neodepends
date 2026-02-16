@@ -30,6 +30,9 @@ a = Analysis(
     hiddenimports=[
         'neodepends_python_export',  # Explicitly include the export module
         'pipeline_errors',
+        'tqdm',
+        'tqdm.auto',
+        'tqdm.utils',
     ],
     hookspath=[],
     hooksconfig={},
