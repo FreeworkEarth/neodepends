@@ -48,8 +48,28 @@ pyinstaller --clean --noconfirm neodepends_analyze.spec
 
 echo ""
 echo "[2/2] Moving binary to dist directory..."
-mkdir -p ../dist/binaries
+mkdir -p ../dist/binaries/bin
 mv dist/dependency-analyzer ../dist/binaries/
+
+# Copy neodepends-core and depends.jar into bin/ so the binary can find them locally
+if [ -f "../target/release/neodepends" ]; then
+    cp "../target/release/neodepends" "../dist/binaries/bin/neodepends-core"
+    chmod +x "../dist/binaries/bin/neodepends-core"
+    echo "[OK] Copied neodepends-core to dist/binaries/bin/"
+elif [ -f "../target/aarch64-apple-darwin/release/neodepends" ]; then
+    cp "../target/aarch64-apple-darwin/release/neodepends" "../dist/binaries/bin/neodepends-core"
+    chmod +x "../dist/binaries/bin/neodepends-core"
+    echo "[OK] Copied neodepends-core (aarch64) to dist/binaries/bin/"
+else
+    echo "[WARN] neodepends binary not found — run 'cargo build --release' first"
+fi
+
+if [ -f "../artifacts/depends.jar" ]; then
+    cp "../artifacts/depends.jar" "../dist/binaries/bin/depends.jar"
+    echo "[OK] Copied depends.jar to dist/binaries/bin/"
+else
+    echo "[WARN] artifacts/depends.jar not found — Java analysis will not work"
+fi
 
 echo ""
 echo "=========================================="

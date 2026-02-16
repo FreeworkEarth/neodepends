@@ -166,30 +166,69 @@ class _StdoutLogger:
         return
 
 
+try:
+    from tqdm import tqdm as _tqdm_cls
+    _TQDM_AVAILABLE = True
+except ImportError:
+    _TQDM_AVAILABLE = False
+
+
 class _UserLogger:
-    """User-facing logger: concise progress messages written to stdout."""
+    """User-facing logger: concise progress messages written to stdout.
+
+    When tqdm is available, pipeline steps are shown as a live progress bar
+    with elapsed time. Falls back to plain numbered lines otherwise.
+    """
 
     def __init__(self) -> None:
         self._step = 0
+        self._bar = None
+        if _TQDM_AVAILABLE:
+            self._bar = _tqdm_cls(
+                total=None,           # indeterminate — steps aren't fixed
+                unit="step",
+                dynamic_ncols=True,
+                bar_format="{desc}  [{elapsed}]  step {n}{postfix}",
+                leave=True,
+            )
 
     def step(self, msg: str) -> None:
-        """Print a numbered pipeline step."""
+        """Advance to the next pipeline step."""
         self._step += 1
-        sys.stdout.write(f"  [{self._step}] {msg}\n")
-        sys.stdout.flush()
+        if self._bar is not None:
+            self._bar.set_description(f"  [{self._step}] {msg:<50}")
+            self._bar.update(1)
+        else:
+            sys.stdout.write(f"  [{self._step}] {msg}\n")
+            sys.stdout.flush()
 
     def info(self, msg: str) -> None:
-        """Print an informational line (indented, no step number)."""
-        sys.stdout.write(f"      {msg}\n")
-        sys.stdout.flush()
+        """Print an informational line (e.g. timing)."""
+        if self._bar is not None:
+            self._bar.set_postfix_str(msg)
+        else:
+            sys.stdout.write(f"      {msg}\n")
+            sys.stdout.flush()
 
     def ok(self, msg: str) -> None:
-        sys.stdout.write(f"  OK  {msg}\n")
-        sys.stdout.flush()
+        if self._bar is not None:
+            self._bar.write(f"  OK  {msg}")
+        else:
+            sys.stdout.write(f"  OK  {msg}\n")
+            sys.stdout.flush()
 
     def warn(self, msg: str) -> None:
-        sys.stdout.write(f"  !!  {msg}\n")
-        sys.stdout.flush()
+        if self._bar is not None:
+            self._bar.write(f"  !!  {msg}")
+        else:
+            sys.stdout.write(f"  !!  {msg}\n")
+            sys.stdout.flush()
+
+    def close(self) -> None:
+        """Finish the progress bar (call after the pipeline completes)."""
+        if self._bar is not None:
+            self._bar.close()
+            self._bar = None
 
 
 def _find_dir_named(start: Path, name: str) -> Optional[Path]:
@@ -3090,6 +3129,7 @@ def main() -> int:
             logger.line(f"[OK] Dev log: {terminal_path}")
 
             # User-facing completion summary
+            ulog.close()
             db_s = summary.get("db_summary") or {}
             total_elapsed = sum(summary["timings_sec"].values())
             sys.stdout.write(f"\nDone in {total_elapsed:.1f}s\n")
