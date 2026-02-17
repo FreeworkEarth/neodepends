@@ -25,9 +25,14 @@ a = Analysis(
         (str(tools_dir / 'enhance_java_deps.py'), 'tools'),
         (str(tools_dir / 'detect_overrides.py'), 'tools'),
         (str(tools_dir / 'export_dv8_from_neodepends_db.py'), 'tools'),
+        (str(tools_dir / 'pipeline_errors.py'), 'tools'),
     ],
     hiddenimports=[
         'neodepends_python_export',  # Explicitly include the export module
+        'pipeline_errors',
+        'tqdm',
+        'tqdm.auto',
+        'tqdm.utils',
     ],
     hookspath=[],
     hooksconfig={},

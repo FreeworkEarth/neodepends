@@ -1,5 +1,6 @@
 /target
 /release
+/tests
 .DS_Store
 __pycache__/
 *.pyc
@@ -21,3 +22,7 @@ TEST_AUTO/
 CHANGELOG.md
 CONTRIBUTING.md
 RELEASING.md
+
+# Built files
+dist/
+build/
