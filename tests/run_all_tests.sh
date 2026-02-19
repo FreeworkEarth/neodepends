@@ -321,13 +321,17 @@ REPORT_LINES+=("")
 # ============================================================================
 log_test "Enhancement Script - Output uses ASCII arrows (->)"
 
-if grep -q "Method->Field" "$TEST_OUTPUT/python_test.log"; then
+# Enhancement output may go to stdout (main) or dev_log/dev_log.txt (production)
+ENHANCE_LOG="$TEST_OUTPUT/python_test/data/dev_log/dev_log.txt"
+if grep -q "Method->Field" "$TEST_OUTPUT/python_test.log" 2>/dev/null || \
+   grep -q "Method->Field" "$ENHANCE_LOG" 2>/dev/null; then
     log_pass "Enhancement script output uses ASCII arrows (Method->Field)"
 else
     log_fail "Enhancement script output doesn't use ASCII arrows"
 fi
 
-if grep -q "Method→Field" "$TEST_OUTPUT/python_test.log"; then
+if grep -q "Method→Field" "$TEST_OUTPUT/python_test.log" 2>/dev/null || \
+   grep -q "Method→Field" "$ENHANCE_LOG" 2>/dev/null; then
     log_fail "Found Unicode arrows in enhancement script output"
 else
     log_pass "No Unicode arrows in enhancement script output"

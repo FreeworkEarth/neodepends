@@ -46,7 +46,13 @@ def check_python_version():
 
 def find_neodepends_binary():
     """Find the neodepends-core binary in common locations"""
-    script_dir = Path(__file__).parent.resolve()
+    # When running as a PyInstaller frozen bundle, __file__ points to the temp
+    # extraction folder (_MEIxxxxx), not the installed directory. sys.executable
+    # always points to the actual dependency-analyzer binary on disk.
+    if getattr(sys, "frozen", False):
+        script_dir = Path(sys.executable).parent.resolve()
+    else:
+        script_dir = Path(__file__).parent.resolve()
 
     if platform.system() == "Windows":
         candidates = [

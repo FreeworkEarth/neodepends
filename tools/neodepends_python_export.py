@@ -130,6 +130,56 @@ def _get_python_executable() -> str:
         return sys.executable
 
 
+def _get_python_executable() -> str:
+    """
+    Get the correct Python executable to use for subprocess calls.
+
+    Inside PyInstaller bundles, sys.executable points to the bundled executable,
+    not Python. We need to find the actual Python interpreter.
+
+    Raises:
+        RuntimeError: If Python interpreter cannot be found in PATH (PyInstaller only)
+    """
+    # Check if running in PyInstaller bundle
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle - need to find Python
+        # On Windows, try 'python' and 'py' first (more common than python3)
+        # On Unix, try 'python3' first
+        import platform
+        if platform.system() == 'Windows':
+            candidates = ['python', 'py', 'python3']
+        else:
+            candidates = ['python3', 'python']
+
+        for name in candidates:
+            python_path = shutil.which(name)
+            if python_path:
+                # Verify it's a real Python executable, not Windows Store stub
+                try:
+                    result = subprocess.run(
+                        [python_path, '--version'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    if result.returncode == 0:
+                        # Valid Python executable
+                        return python_path
+                except (subprocess.SubprocessError, OSError):
+                    # This executable doesn't work, try next
+                    continue
+
+        # No Python found - this is a critical error
+        raise RuntimeError(
+            "Python interpreter not found in PATH. "
+            "The dependency-analyzer requires Python 3.7+ to be installed and available in PATH. "
+            "Please ensure Python is installed and added to your system PATH, then try again."
+        )
+    else:
+        # Normal Python execution - use sys.executable
+        return sys.executable
+
+
 @dataclass(frozen=True)
 class DbEntity:
     id: bytes

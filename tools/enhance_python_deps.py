@@ -105,8 +105,28 @@ def find_field_usages(method_content: str, field_name: str) -> bool:
         return _find_field_usages_regex(method_content, field_name)
 
 
+def is_abstract_method(func_node: ast.FunctionDef) -> bool:
+    """Check if a method is abstract (@abstractmethod decorator or raise NotImplementedError body)."""
+    for decorator in func_node.decorator_list:
+        if isinstance(decorator, ast.Name) and decorator.id == "abstractmethod":
+            return True
+        if isinstance(decorator, ast.Attribute) and decorator.attr == "abstractmethod":
+            return True
+    # Also treat raise NotImplementedError as abstract pattern
+    for stmt in ast.walk(ast.Module(body=func_node.body, type_ignores=[])):
+        if isinstance(stmt, ast.Raise) and stmt.exc is not None:
+            exc = stmt.exc
+            if isinstance(exc, ast.Name) and exc.id == "NotImplementedError":
+                return True
+            if isinstance(exc, ast.Call):
+                func = exc.func
+                if isinstance(func, ast.Name) and func.id == "NotImplementedError":
+                    return True
+    return False
+
+
 def is_abstract_class(class_node: ast.ClassDef) -> bool:
-    """Check if a class is abstract (inherits ABC or uses ABCMeta)."""
+    """Check if a class is abstract (inherits ABC, uses ABCMeta, or has NotImplementedError methods)."""
     for base in class_node.bases:
         if isinstance(base, ast.Name) and base.id == "ABC":
             return True
@@ -118,15 +138,9 @@ def is_abstract_class(class_node: ast.ClassDef) -> bool:
                 return True
             if isinstance(keyword.value, ast.Attribute) and keyword.value.attr == "ABCMeta":
                 return True
-    return False
-
-
-def is_abstract_method(func_node: ast.FunctionDef) -> bool:
-    """Check if a method has @abstractmethod decorator."""
-    for decorator in func_node.decorator_list:
-        if isinstance(decorator, ast.Name) and decorator.id == "abstractmethod":
-            return True
-        if isinstance(decorator, ast.Attribute) and decorator.attr == "abstractmethod":
+    # Also treat as abstract if any method raises NotImplementedError
+    for item in class_node.body:
+        if isinstance(item, ast.FunctionDef) and is_abstract_method(item):
             return True
     return False
 
@@ -402,6 +416,16 @@ def enhance_python_dependencies(
         as_init = module.replace(".", "/") + "/__init__.py"
         if as_init in file_id_by_name:
             return as_init
+        # Module may live in a subdirectory (e.g. entity name is "src/survey.py" but
+        # the import says `from survey import Survey`). Search by suffix match.
+        suffix_file = "/" + as_file
+        for name in file_id_by_name:
+            if name.endswith(suffix_file):
+                return name
+        suffix_init = "/" + as_init
+        for name in file_id_by_name:
+            if name.endswith(suffix_init):
+                return name
         return None
 
     def _resolve_relative(module: Optional[str], level: int, src_file_name: str) -> Optional[str]:

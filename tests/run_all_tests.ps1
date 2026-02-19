@@ -284,16 +284,20 @@ if (Test-Path "$PythonTestDir\data\raw_filtered") {
 # ============================================================================
 Log-Test "Enhancement Script - Output uses ASCII arrows (->)"
 
-$LogContent = Get-Content $PythonLogFile -Raw
+# Enhancement output may go to stdout (main) or dev_log/dev_log.txt (production)
+$LogContent = if (Test-Path $PythonLogFile) { Get-Content $PythonLogFile -Raw -ErrorAction SilentlyContinue } else { "" }
+$DevLogFile = Join-Path $TestOutput "python_test\data\dev_log\dev_log.txt"
+$DevLogContent = if (Test-Path $DevLogFile) { Get-Content $DevLogFile -Raw -ErrorAction SilentlyContinue } else { "" }
+$CombinedLog = "$LogContent`n$DevLogContent"
 
-if ($LogContent -match "Method->Field") {
+if ($CombinedLog -match "Method->Field") {
     Log-Pass "Enhancement script output uses ASCII arrows (Method->Field)"
 } else {
     Log-Fail "Enhancement script output doesn't use ASCII arrows"
 }
 
 # Should NOT have Unicode arrows
-if ($LogContent -match "Method→Field") {
+if ($CombinedLog -match "Method→Field") {
     Log-Fail "Found Unicode arrows (→) in enhancement script output!"
 } else {
     Log-Pass "No Unicode arrows (→) in enhancement script output"

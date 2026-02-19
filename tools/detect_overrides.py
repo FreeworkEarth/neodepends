@@ -202,16 +202,35 @@ class PythonClassAnalyzer(ast.NodeVisitor):
             elif isinstance(base, ast.Attribute):
                 class_info['bases'].append(base.attr)
 
-        # Extract methods and check for @abstractmethod
+        # Extract methods and check for @abstractmethod or raise NotImplementedError
         for item in node.body:
             if isinstance(item, ast.FunctionDef):
                 class_info['methods'].add(item.name)
 
+                is_abstract = False
                 for decorator in item.decorator_list:
                     if isinstance(decorator, ast.Name) and decorator.id == "abstractmethod":
-                        class_info['abstract_methods'].add(item.name)
+                        is_abstract = True
                     elif isinstance(decorator, ast.Attribute) and decorator.attr == "abstractmethod":
-                        class_info['abstract_methods'].add(item.name)
+                        is_abstract = True
+
+                # Also detect `raise NotImplementedError(...)` as abstract pattern
+                if not is_abstract:
+                    for stmt in ast.walk(ast.Module(body=item.body, type_ignores=[])):
+                        if isinstance(stmt, ast.Raise) and stmt.exc is not None:
+                            exc = stmt.exc
+                            # Handles: raise NotImplementedError or raise NotImplementedError(...)
+                            if isinstance(exc, ast.Name) and exc.id == "NotImplementedError":
+                                is_abstract = True
+                                break
+                            if isinstance(exc, ast.Call):
+                                func = exc.func
+                                if isinstance(func, ast.Name) and func.id == "NotImplementedError":
+                                    is_abstract = True
+                                    break
+
+                if is_abstract:
+                    class_info['abstract_methods'].add(item.name)
 
         self.classes[node.name] = class_info
         self.generic_visit(node)
