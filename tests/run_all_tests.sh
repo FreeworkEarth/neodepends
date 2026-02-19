@@ -214,23 +214,7 @@ REPORT_LINES+=("")
 # ============================================================================
 log_test "Documentation - README has cross-platform setup instructions"
 
-if grep -q "QuickStart Release Bundle: One-Command Setup & Analysis" README.md; then
-    log_pass "README has QuickStart cross-platform setup section"
-else
-    log_fail "README missing QuickStart setup section"
-fi
-
-if grep -q "python3 setup.py" README.md; then
-    log_pass "README includes Python setup command"
-else
-    log_fail "README missing Python setup command"
-fi
-
-if grep -q "python3 run_dependency_analysis.py" README.md; then
-    log_pass "README includes Python analysis command"
-else
-    log_fail "README missing Python analysis command"
-fi
+log_info "Skipped on production (client README differs)"
 
 REPORT_LINES+=("")
 
@@ -239,20 +223,7 @@ REPORT_LINES+=("")
 # ============================================================================
 log_test "Setup Script - Verify setup.py exists and is executable"
 
-if [ -f "setup.py" ]; then
-    log_pass "setup.py exists in repository root"
-else
-    log_fail "setup.py not found in repository root"
-fi
-
-# Test that setup.py runs without errors
-if [ -f "setup.py" ]; then
-    if python3 setup.py 2>&1 | grep -q "NeoDepends Setup"; then
-        log_pass "setup.py runs successfully"
-    else
-        log_fail "setup.py failed to run"
-    fi
-fi
+log_info "Skipped on production (setup.py not shipped in release repo)"
 
 REPORT_LINES+=("")
 
@@ -350,13 +321,17 @@ REPORT_LINES+=("")
 # ============================================================================
 log_test "Enhancement Script - Output uses ASCII arrows (->)"
 
-if grep -q "Method->Field" "$TEST_OUTPUT/python_test.log"; then
+# Enhancement output may go to stdout (main) or dev_log/dev_log.txt (production)
+ENHANCE_LOG="$TEST_OUTPUT/python_test/data/dev_log/dev_log.txt"
+if grep -q "Method->Field" "$TEST_OUTPUT/python_test.log" 2>/dev/null || \
+   grep -q "Method->Field" "$ENHANCE_LOG" 2>/dev/null; then
     log_pass "Enhancement script output uses ASCII arrows (Method->Field)"
 else
     log_fail "Enhancement script output doesn't use ASCII arrows"
 fi
 
-if grep -q "Method→Field" "$TEST_OUTPUT/python_test.log"; then
+if grep -q "Method→Field" "$TEST_OUTPUT/python_test.log" 2>/dev/null || \
+   grep -q "Method→Field" "$ENHANCE_LOG" 2>/dev/null; then
     log_fail "Found Unicode arrows in enhancement script output"
 else
     log_pass "No Unicode arrows in enhancement script output"

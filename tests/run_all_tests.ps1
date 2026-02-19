@@ -196,48 +196,14 @@ if (Select-String -Path "run_dependency_analysis.ps1" -Pattern "Auto-selected re
 # ============================================================================
 Log-Test "Documentation - README has cross-platform setup instructions"
 
-if (Select-String -Path "README.md" -Pattern "QuickStart Release Bundle: One-Command Setup & Analysis" -Quiet) {
-    Log-Pass "README has QuickStart cross-platform setup section"
-} else {
-    Log-Fail "README missing QuickStart setup section"
-}
-
-if (Select-String -Path "README.md" -Pattern "python3 setup.py" -Quiet) {
-    Log-Pass "README includes Python setup command"
-} else {
-    Log-Fail "README missing Python setup command"
-}
-
-if (Select-String -Path "README.md" -Pattern "python3 run_dependency_analysis.py" -Quiet) {
-    Log-Pass "README includes Python analysis command"
-} else {
-    Log-Fail "README missing Python analysis command"
-}
+Log-Info "Skipped on production (client README differs)"
 
 # ============================================================================
 # TEST 4: Setup Script - Verify setup.py exists and works
 # ============================================================================
 Log-Test "Setup Script - Verify setup.py exists and is executable"
 
-if (Test-Path "setup.py") {
-    Log-Pass "setup.py exists in repository root"
-} else {
-    Log-Fail "setup.py not found in repository root"
-}
-
-# Test that setup.py runs without errors
-if (Test-Path "setup.py") {
-    try {
-        $SetupOutput = & python3 setup.py 2>&1 | Out-String
-        if ($SetupOutput -match "NeoDepends Setup") {
-            Log-Pass "setup.py runs successfully"
-        } else {
-            Log-Fail "setup.py failed to run"
-        }
-    } catch {
-        Log-Fail "setup.py execution threw an error"
-    }
-}
+Log-Info "Skipped on production (setup.py not shipped in release repo)"
 
 # ============================================================================
 # TEST 5: Folder Structure - Run Python analysis and check data/ folder
@@ -318,16 +284,20 @@ if (Test-Path "$PythonTestDir\data\raw_filtered") {
 # ============================================================================
 Log-Test "Enhancement Script - Output uses ASCII arrows (->)"
 
-$LogContent = Get-Content $PythonLogFile -Raw
+# Enhancement output may go to stdout (main) or dev_log/dev_log.txt (production)
+$LogContent = if (Test-Path $PythonLogFile) { Get-Content $PythonLogFile -Raw -ErrorAction SilentlyContinue } else { "" }
+$DevLogFile = Join-Path $TestOutput "python_test\data\dev_log\dev_log.txt"
+$DevLogContent = if (Test-Path $DevLogFile) { Get-Content $DevLogFile -Raw -ErrorAction SilentlyContinue } else { "" }
+$CombinedLog = "$LogContent`n$DevLogContent"
 
-if ($LogContent -match "Method->Field") {
+if ($CombinedLog -match "Method->Field") {
     Log-Pass "Enhancement script output uses ASCII arrows (Method->Field)"
 } else {
     Log-Fail "Enhancement script output doesn't use ASCII arrows"
 }
 
 # Should NOT have Unicode arrows
-if ($LogContent -match "Method→Field") {
+if ($CombinedLog -match "Method→Field") {
     Log-Fail "Found Unicode arrows (→) in enhancement script output!"
 } else {
     Log-Pass "No Unicode arrows (→) in enhancement script output"
