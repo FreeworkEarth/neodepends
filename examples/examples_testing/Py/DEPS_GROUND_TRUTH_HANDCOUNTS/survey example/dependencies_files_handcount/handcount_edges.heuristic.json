@@ -2263,5 +2263,365 @@
     "src/valid_date_question.py/CLASSES/ValidDateQuestion/METHODS/tabulate (Method)",
     "src/question.py/CLASSES/Question/FIELDS/user_response (Field)",
     "Use"
+  ],
+  [
+    "run.py/module (Module)",
+    "src/main.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/essay_question.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/essay_question.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/essay_question.py/module (Module)",
+    "src/question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/essay_question.py/module (Module)",
+    "src/response_correct_answer.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/grader.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/grader.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/main.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/main.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/main.py/module (Module)",
+    "src/survey_menu.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/main.py/module (Module)",
+    "src/test_menu.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/matching_question.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/matching_question.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/matching_question.py/module (Module)",
+    "src/question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/matching_question.py/module (Module)",
+    "src/response_correct_answer.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/menu.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/menu.py/module (Module)",
+    "src/survey.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/multiple_choice_question.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/multiple_choice_question.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/multiple_choice_question.py/module (Module)",
+    "src/question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/multiple_choice_question.py/module (Module)",
+    "src/response_correct_answer.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/question.py/module (Module)",
+    "src/essay_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/question.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/question.py/module (Module)",
+    "src/matching_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/question.py/module (Module)",
+    "src/multiple_choice_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/question.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/question.py/module (Module)",
+    "src/short_answer_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/question.py/module (Module)",
+    "src/true_false_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/question.py/module (Module)",
+    "src/valid_date_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/response_correct_answer.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/serializer.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/serializer.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/serializer.py/module (Module)",
+    "src/survey.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/serializer.py/module (Module)",
+    "src/test.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/short_answer_question.py/module (Module)",
+    "src/essay_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/short_answer_question.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey.py/module (Module)",
+    "src/question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey.py/module (Module)",
+    "src/response_correct_answer.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey_menu.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey_menu.py/module (Module)",
+    "src/menu.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey_menu.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey_menu.py/module (Module)",
+    "src/serializer.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey_menu.py/module (Module)",
+    "src/survey.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/survey_menu.py/module (Module)",
+    "src/tabulator.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/tabulator.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/tabulator.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/tabulator.py/module (Module)",
+    "src/serializer.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test.py/module (Module)",
+    "src/matching_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test.py/module (Module)",
+    "src/multiple_choice_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test.py/module (Module)",
+    "src/question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test.py/module (Module)",
+    "src/response_correct_answer.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test.py/module (Module)",
+    "src/short_answer_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test.py/module (Module)",
+    "src/survey.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test.py/module (Module)",
+    "src/valid_date_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test_menu.py/module (Module)",
+    "src/grader.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test_menu.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test_menu.py/module (Module)",
+    "src/menu.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test_menu.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test_menu.py/module (Module)",
+    "src/serializer.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test_menu.py/module (Module)",
+    "src/tabulator.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/test_menu.py/module (Module)",
+    "src/test.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/true_false_question.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/true_false_question.py/module (Module)",
+    "src/multiple_choice_question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/true_false_question.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/valid_date_question.py/module (Module)",
+    "src/input_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/valid_date_question.py/module (Module)",
+    "src/output_handler.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/valid_date_question.py/module (Module)",
+    "src/question.py/module (Module)",
+    "Import"
+  ],
+  [
+    "src/valid_date_question.py/module (Module)",
+    "src/response_correct_answer.py/module (Module)",
+    "Import"
   ]
 ]
