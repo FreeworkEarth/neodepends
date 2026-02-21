@@ -23,15 +23,17 @@ What this filter does (high level):
       <file>/CLASSES/<C>/CONSTRUCTORS/__init__ (Constructor)
       <file>/CLASSES/<C>/METHODS/<m> (Method)
       <file>/CLASSES/<C>/FIELDS/<f> (Field)
-  - Keeps only the "core 6" dependency kinds used in this project:
-      Import, Extend, Create, Call, Use, Implement
+  - Keeps only the "core 8" dependency kinds used in this project:
+      Import, Extend, Create, Call, Use, Override, Parameter, Cast
   - Enforces strict shapes (source-kind -> target-kind):
       Import: File -> File
       Extend: Class -> Class
       Create: Method/Constructor -> Class
       Call:   Method/Constructor -> Method
       Use:    Method/Constructor -> Field, and only for fields owned by the same class
-              (the “self.field” signal; cross-object attribute reads like `x.y` are excluded)
+              (the "self.field" signal; cross-object attribute reads like `x.y` are excluded)
+      Parameter: (no shape filtering - trust Depends output)
+      Cast:   (no shape filtering - trust Depends output)
   - Drops external targets (internal-only DSM), deduplicates to unique edges, and applies
     deterministic ordering of nodes for easy DV8 visual comparison.
 
@@ -858,7 +860,7 @@ def export_dv8_file_level(
     if align_handcount and not edges:
         # Fallback: derive file->file coupling from any cross-file edge when Import edges are missing.
         # We keep the original kind if it is in the core set; otherwise skip it.
-        core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Override"}
+        core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast"}
         for src_id, tgt_id, dep_kind in dep_rows:
             if dep_kind not in core_kinds:
                 continue
@@ -1772,7 +1774,7 @@ def export_dv8_full_project(
     focus_file_names = pkg_files + root_files
 
     dep_rows = cur.execute("SELECT src, tgt, kind FROM deps").fetchall()
-    core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Override"}
+    core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast"}
 
     # (1) File-level edges (file -> file) for overview within the same DSM.
     file_level_edges: List[Tuple[str, str, str]] = []
@@ -1816,7 +1818,7 @@ def export_dv8_full_project(
     # Keep focus entities: file/class/method/function/field/constructor entities that belong to focus files.
     focus_entity_ids: Set[bytes] = set()
     for eid, ent in entities.items():
-        if ent.kind not in {"File", "Class", "Method", "Function", "Field", "Constructor"}:
+        if ent.kind not in {"File", "Class", "Method", "Function", "Field", "Constructor", "Enum", "Interface"}:
             continue
         file_id = _ancestor_file_id(entities, eid, file_id_memo)
         if file_id is None:
@@ -1877,6 +1879,8 @@ def export_dv8_full_project(
             # - Call: Method -> Method
             # - Use: Method/Function/Constructor -> Field/Class (and Field -> Field for intra-class field uses)
             # - Override: Method -> Method
+            # - Parameter: No shape filtering (trust Depends output)
+            # - Cast: No shape filtering (trust Depends output)
             if dep_kind == "Import" and not (src_kind == "File" and tgt_kind == "File"):
                 continue
             if dep_kind == "Extend" and not (src_kind == "Class" and tgt_kind == "Class"):
@@ -2066,7 +2070,7 @@ def export_dv8_per_file(
     cur = con.cursor()
 
     file_rows = cur.execute("SELECT id, name FROM entities WHERE kind = 'File' ORDER BY name").fetchall()
-    core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Override"}
+    core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast"}
     for file_id, file_name in file_rows:
         if align_handcount and file_name.endswith("/__init__.py"):
             continue
