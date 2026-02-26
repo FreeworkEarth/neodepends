@@ -860,7 +860,12 @@ def export_dv8_file_level(
     if align_handcount and not edges:
         # Fallback: derive file->file coupling from any cross-file edge when Import edges are missing.
         # We keep the original kind if it is in the core set; otherwise skip it.
-        core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast"}
+        core_kinds = {
+            # Original core 8
+            "Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast",
+            # All Java-relevant Depends dep kinds (previously filtered out)
+            "Contain", "Implement", "Return", "Throw", "MixIn",
+        }
         for src_id, tgt_id, dep_kind in dep_rows:
             if dep_kind not in core_kinds:
                 continue
@@ -1774,7 +1779,12 @@ def export_dv8_full_project(
     focus_file_names = pkg_files + root_files
 
     dep_rows = cur.execute("SELECT src, tgt, kind FROM deps").fetchall()
-    core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast"}
+    core_kinds = {
+        # Original core 8
+        "Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast",
+        # All Java-relevant Depends dep kinds (previously filtered out)
+        "Contain", "Implement", "Return", "Throw", "MixIn",
+    }
 
     # (1) File-level edges (file -> file) for overview within the same DSM.
     file_level_edges: List[Tuple[str, str, str]] = []
@@ -2070,7 +2080,12 @@ def export_dv8_per_file(
     cur = con.cursor()
 
     file_rows = cur.execute("SELECT id, name FROM entities WHERE kind = 'File' ORDER BY name").fetchall()
-    core_kinds = {"Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast"}
+    core_kinds = {
+        # Original core 8
+        "Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast",
+        # All Java-relevant Depends dep kinds (previously filtered out)
+        "Contain", "Implement", "Return", "Throw", "MixIn",
+    }
     for file_id, file_name in file_rows:
         if align_handcount and file_name.endswith("/__init__.py"):
             continue
@@ -3003,7 +3018,52 @@ def main() -> int:
                     elapsed_enhance = time.time() - t2
                     ulog.info(f"Done in {elapsed_enhance:.1f}s")
             else:
-                elapsed_raw_export = 0.0
+                # Java: save raw depends snapshot before any enhancement (mirrors Python raw snapshot).
+                shutil.copyfile(db_path, raw_db_path)
+                ulog.step("Saving pre-enhancement Java snapshot (raw depends output)")
+                t_raw = time.time()
+                export_dv8_per_file(
+                    db_path=raw_db_path,
+                    out_dir=raw_out_dir,
+                    include_external_targets=include_external,
+                    include_incoming_edges=include_incoming,
+                    only_py=args.only_py,
+                    focus_prefix=focus_prefix,
+                    include_root_py=include_root_py,
+                    write_clustering=per_file_clustering,
+                    align_handcount=False,   # raw: no shape/kind filtering
+                    dv8_hierarchy=dv8_hierarchy,
+                    collapse_weights=False,  # raw: keep actual counts
+                )
+                if file_level_dv8:
+                    export_dv8_file_level(
+                        db_path=raw_db_path,
+                        out_dir=raw_out_dir,
+                        output_path=raw_file_level_out_path,
+                        focus_prefix=focus_prefix,
+                        include_root_py=include_root_py,
+                        include_external_target_files=file_level_include_external,
+                        include_self_edges=bool(args.file_level_include_self_edges),
+                        align_handcount=False,
+                        dv8_hierarchy=dv8_hierarchy,
+                        collapse_weights=False,
+                    )
+                if full_dv8:
+                    export_dv8_full_project(
+                        db_path=raw_db_path,
+                        out_dir=raw_out_dir,
+                        output_path=raw_full_dep_out_path,
+                        focus_prefix=focus_prefix,
+                        include_root_py=include_root_py,
+                        include_external_targets=include_external,
+                        include_external_target_files=file_level_include_external,
+                        include_self_edges=bool(args.file_level_include_self_edges),
+                        align_handcount=False,
+                        dv8_hierarchy=dv8_hierarchy,
+                        collapse_weights=False,
+                    )
+                elapsed_raw_export = time.time() - t_raw
+                raw_exported = True
 
                 # Java override detection: detect @Override annotations and insert Override edges.
                 if not args.no_override and override_script.exists():
