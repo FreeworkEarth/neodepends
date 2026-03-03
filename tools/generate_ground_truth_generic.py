@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 
-KINDS = ("Import", "Extend", "Create", "Call", "Use")
+KINDS = ("Import", "Extend", "Create", "Call", "Use", "Parameter", "Cast")
 
 
 @dataclass(frozen=True)

@@ -150,8 +150,8 @@ def main() -> int:
     ap.add_argument("--name", default="neodepends (dv8 export)", help="Matrix name")
     ap.add_argument(
         "--kinds",
-        default="Import,Extend,Create,Call,Use",
-        help="Comma-separated dep kinds to include (default: Import,Extend,Create,Call,Use)",
+        default="Import,Extend,Create,Call,Use,Parameter,Cast",
+        help="Comma-separated dep kinds to include (default: Import,Extend,Create,Call,Use,Parameter,Cast)",
     )
     ap.add_argument(
         "--dv8-hierarchy",
