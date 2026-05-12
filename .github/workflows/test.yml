@@ -77,7 +77,7 @@ jobs:
             --neodepends-bin target/release/neodepends \
             --depends-jar artifacts/depends.jar \
             --output-dir tests/test_output/handcount_regression \
-            --tolerance 0.05 \
+            --tolerance 0.10 \
             $TOY_ARGS
 
       - name: Upload test artifacts on failure

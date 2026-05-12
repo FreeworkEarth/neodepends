@@ -419,8 +419,21 @@ def run_neodepends(
     _run_and_tee(cmd, logger=logger)
 
 
-def run_python_enhancement(*, enhance_script: Path, db_path: Path, profile: str, logger: Any) -> None:
-    _run_and_tee([_get_python_executable(), str(enhance_script), str(db_path), "--profile", profile], logger=logger)
+def run_python_enhancement(
+    *,
+    enhance_script: Path,
+    db_path: Path,
+    profile: str,
+    logger: Any,
+    include_transitive_inheritance: bool = False,
+    type_annotated_params: bool = False,
+) -> None:
+    cmd = [_get_python_executable(), str(enhance_script), str(db_path), "--profile", profile]
+    if include_transitive_inheritance:
+        cmd.append("--include-transitive-inheritance")
+    if type_annotated_params:
+        cmd.append("--type-annotated-params")
+    _run_and_tee(cmd, logger=logger)
 
 def run_override_detection(*, override_script: Path, db_path: Path, source_root: Path, logger: Any) -> None:
     """Run the unified detect_overrides.py script (Python + Java override detection)."""
@@ -1779,6 +1792,28 @@ def export_dv8_full_project(
     focus_file_names = pkg_files + root_files
 
     dep_rows = cur.execute("SELECT src, tgt, kind FROM deps").fetchall()
+
+    # Build a class ancestry map (class_id -> set of ancestor class_ids via Extend edges).
+    # Used to filter spurious Field->Class Use edges produced by StackGraphs where the
+    # target class is actually an ancestor (inherited-from) class, not the field's type.
+    _direct_bases: Dict[bytes, Set[bytes]] = {}
+    for _s, _t, _k in dep_rows:
+        if _k == "Extend" and _s in entities and _t in entities:
+            if entities[_s].kind == "Class" and entities[_t].kind == "Class":
+                _direct_bases.setdefault(_s, set()).add(_t)
+
+    def _class_ancestors(cls_id: bytes) -> Set[bytes]:
+        """Return all transitive ancestor class IDs via Extend edges."""
+        result: Set[bytes] = set()
+        queue = list(_direct_bases.get(cls_id, []))
+        while queue:
+            anc = queue.pop()
+            if anc in result:
+                continue
+            result.add(anc)
+            queue.extend(_direct_bases.get(anc, []))
+        return result
+
     core_kinds = {
         # Original core 8
         "Import", "Extend", "Create", "Call", "Use", "Override", "Parameter", "Cast",
@@ -1887,7 +1922,7 @@ def export_dv8_full_project(
             # - Extend: Class -> Class
             # - Create: Method -> Class
             # - Call: Method -> Method
-            # - Use: Method/Function/Constructor -> Field/Class (and Field -> Field for intra-class field uses)
+            # - Use: Method/Function/Constructor -> Field/Class, Field -> Field (intra-class), Field -> Class (typed field)
             # - Override: Method -> Method
             # - Parameter: No shape filtering (trust Depends output)
             # - Cast: No shape filtering (trust Depends output)
@@ -1903,7 +1938,7 @@ def export_dv8_full_project(
                 continue
             if dep_kind == "Use" and not (
                 (src_kind in {"Method", "Function", "Constructor"} and tgt_kind in {"Field", "Class"})
-                or (src_kind == "Field" and tgt_kind == "Field")
+                or (src_kind == "Field" and tgt_kind in {"Field", "Class"})
             ):
                 continue
             if dep_kind == "Override" and not (
@@ -1914,6 +1949,13 @@ def export_dv8_full_project(
                 # Handcount rules treat Use as "method/constructor uses its own fields" (self.field),
                 # not arbitrary cross-object attribute reads (e.g. `ticket.ticket_id` in `main()`).
                 continue
+            # Filter spurious Field -> Class Use edges where the target class is an ancestor
+            # of the field's owning class (StackGraphs produces these for inherited-from classes).
+            # Legitimate typed-field edges point to unrelated classes, not parent classes.
+            if dep_kind == "Use" and src_kind == "Field" and tgt_kind == "Class":
+                field_owner = _owner_class_entity(entities, src_id)
+                if field_owner is not None and tgt_id in _class_ancestors(field_owner.id):
+                    continue
 
             # Avoid spurious constructor calls: handcount treats constructor invocations as Create edges,
             # and keeps Call edges for `super().__init__` only (i.e., constructor -> constructor on base).
@@ -2434,6 +2476,26 @@ def main() -> int:
         help="Path to enhance_python_deps.py (default: use enhance_python_deps.py from the NEODEPENDS_DEICIDE workspace)",
     )
     parser.add_argument("--no-enhance", action="store_true", help="Skip Python enhancement step")
+    parser.add_argument(
+        "--include-transitive-inheritance",
+        action="store_true",
+        default=False,
+        help=(
+            "Pass --include-transitive-inheritance to enhance_python_deps.py: add Import "
+            "file->file edges for transitive base-class files (C extends B extends A → "
+            "Import(C_file -> A_file)). Off by default."
+        ),
+    )
+    parser.add_argument(
+        "--type-annotated-params",
+        action="store_true",
+        default=False,
+        help=(
+            "Pass --type-annotated-params to enhance_python_deps.py: add Import file->file "
+            "edges derived from PEP-484 type annotations on method parameters "
+            "(e.g. `def f(self, p: Passenger)` → Import to passenger.py). Off by default."
+        ),
+    )
     parser.add_argument(
         "--override-script",
         type=Path,
@@ -3012,6 +3074,8 @@ def main() -> int:
                             db_path=db_path,
                             profile=resolver,
                             logger=logger,
+                            include_transitive_inheritance=bool(getattr(args, "include_transitive_inheritance", False)),
+                            type_annotated_params=bool(getattr(args, "type_annotated_params", False)),
                         )
                     except subprocess.CalledProcessError as exc:
                         raise wrap_subprocess_error(exc, "Python enhancement", enhance_script)
