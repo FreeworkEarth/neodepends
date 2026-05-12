@@ -265,12 +265,31 @@ class _MethodBodyFacts(ast.NodeVisitor):
             isinstance(node.target, ast.Attribute)
             and isinstance(node.target.value, ast.Name)
             and node.target.value.id == "self"
-            and node.value is not None
         ):
-            rhs_attrs = self._collect_self_attrs(node.value)
-            for src in rhs_attrs:
-                if src != node.target.attr:
-                    self.field_assign_uses.add((node.target.attr, src))
+            field_name = node.target.attr
+            if node.value is not None:
+                rhs_attrs = self._collect_self_attrs(node.value)
+                for src in rhs_attrs:
+                    if src != field_name:
+                        self.field_assign_uses.add((field_name, src))
+            # PEP-526 annotated field: self.field: ClassName = ...
+            # Extract the annotation type to populate field_type_assigns.
+            ann = node.annotation
+            cls_name: Optional[str] = None
+            if isinstance(ann, ast.Name) and ann.id in self.known_classes:
+                cls_name = ann.id
+            elif isinstance(ann, ast.Constant) and isinstance(ann.value, str) and ann.value in self.known_classes:
+                # String forward reference: self.field: "ClassName" = ...
+                cls_name = ann.value
+            elif isinstance(ann, ast.Subscript):
+                # List[ClassName], Optional[ClassName], etc.
+                slice_node = ann.slice
+                if isinstance(slice_node, ast.Name) and slice_node.id in self.known_classes:
+                    cls_name = slice_node.id
+                elif isinstance(slice_node, ast.Constant) and isinstance(slice_node.value, str) and slice_node.value in self.known_classes:
+                    cls_name = slice_node.value
+            if cls_name and field_name not in self.field_type_assigns:
+                self.field_type_assigns[field_name] = cls_name
         self.generic_visit(node)
 
     @staticmethod
@@ -388,12 +407,21 @@ def enhance_python_dependencies(
     *,
     profile: str = "depends",
     allow_ambiguous_types: bool = False,
+    include_transitive_inheritance: bool = False,
+    type_annotated_params: bool = False,
 ) -> Tuple[int, int, int]:
     """
     Enhance Python dependencies in a NeoDepends database.
 
+    Optional enrichments (off by default):
+      include_transitive_inheritance: add Import file->file edges for transitive
+        base-class files (C extends B extends A -> C's file imports A's file).
+      type_annotated_params: scan PEP-484 type annotations on method parameters
+        and add Import file->file edges for each annotated type whose class is
+        found in the project (e.g. `def f(self, p: Passenger)` -> Import to passenger.py).
+
     Returns:
-        Tuple of (new_dependencies_added, methods_analyzed)
+        Tuple of (new_dependencies_added, methods_analyzed, override_deps_count)
     """
     conn = sqlite3.Connection(db_path)
     cursor = conn.cursor()
@@ -874,6 +902,29 @@ def enhance_python_dependencies(
         for fname, cls_name in field_types.items():
             field_types_by_class.setdefault(cls_id, {}).setdefault(fname, set()).add(cls_name)
 
+    def _match_param_to_class(param: str, class_names: Set[str]) -> Optional[str]:
+        """Match a parameter name to a known class via snake_case -> CamelCase conversion,
+        exact case-insensitive comparison, or unambiguous suffix match.
+
+        Examples:
+          'passenger' -> 'Passenger' (exact case-insensitive)
+          'train_station' -> 'TrainStation' (snake_case -> CamelCase)
+          'station' -> 'TrainStation' (suffix match, only if unambiguous)
+        """
+        camel = "".join(part.capitalize() for part in param.split("_") if part)
+        if camel in class_names:
+            return camel
+        exact = next((c for c in class_names if c.lower() == param.lower()), None)
+        if exact is not None:
+            return exact
+        # Unambiguous suffix match: 'station' matches 'TrainStation' only if exactly one class ends with it.
+        param_lower = param.lower()
+        if len(param_lower) >= 4:  # avoid matching on very short param names like 'id', 'no'
+            suffix_matches = [c for c in class_names if c.lower().endswith(param_lower) and len(c) > len(param_lower)]
+            if len(suffix_matches) == 1:
+                return suffix_matches[0]
+        return None
+
     def resolve_field_type_from_descendants(class_id: bytes, field_name: str) -> Optional[str]:
         matches: Set[str] = set()
         seen: Set[bytes] = set()
@@ -891,7 +942,7 @@ def enhance_python_dependencies(
             return next(iter(matches))
         return None
 
-    for method_id, parent_id, _method_name, method_start, method_end, content_id, _kind in method_rows:
+    for method_id, parent_id, method_name, method_start, method_end, content_id, _kind in method_rows:
         owner_cls_id: Optional[bytes] = None
         if parent_id in class_ids:
             owner_cls_id = parent_id
@@ -912,6 +963,141 @@ def enhance_python_dependencies(
         facts.visit(tree)
         for field_name, cls_name in facts.field_type_assigns.items():
             field_types_by_class.setdefault(owner_cls_id, {}).setdefault(field_name, set()).add(cls_name)
+
+        # Name-convention inference: self.field = param where param name matches a known
+        # class (snake_case -> CamelCase). Applied to ALL methods, not just __init__,
+        # to catch setter patterns like set_route(self, route): self.route = route.
+        # Does not override explicit inferences already in field_types_by_class.
+        fdef = next(
+            (n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))),
+            None,
+        )
+        if fdef is not None:
+            param_names: Set[str] = {a.arg for a in fdef.args.args if a.arg not in ("self", "cls")}
+            for node in ast.walk(tree):
+                # Pattern A: self.field = param  (direct assignment)
+                if (
+                    isinstance(node, ast.Assign)
+                    and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Attribute)
+                    and isinstance(node.targets[0].value, ast.Name)
+                    and node.targets[0].value.id == "self"
+                    and isinstance(node.value, ast.Name)
+                    and node.value.id in param_names
+                ):
+                    f_name = node.targets[0].attr
+                    p_name = node.value.id
+                    # Skip if we already have an inferred type for this field.
+                    if f_name in field_types_by_class.get(owner_cls_id, {}):
+                        continue
+                    matched_cls = _match_param_to_class(p_name, known_class_names)
+                    if matched_cls:
+                        field_types_by_class.setdefault(owner_cls_id, {}).setdefault(
+                            f_name, set()
+                        ).add(matched_cls)
+
+                # Pattern B: self.field.append(param)  (list-accumulator)
+                # Infers that self.field is a list of param's class type.
+                elif (
+                    isinstance(node, ast.Expr)
+                    and isinstance(node.value, ast.Call)
+                    and isinstance(node.value.func, ast.Attribute)
+                    and node.value.func.attr == "append"
+                    and isinstance(node.value.func.value, ast.Attribute)
+                    and isinstance(node.value.func.value.value, ast.Name)
+                    and node.value.func.value.value.id == "self"
+                    and len(node.value.args) == 1
+                    and isinstance(node.value.args[0], ast.Name)
+                    and node.value.args[0].id in param_names
+                ):
+                    f_name = node.value.func.value.attr
+                    p_name = node.value.args[0].id
+                    if f_name in field_types_by_class.get(owner_cls_id, {}):
+                        continue
+                    matched_cls = _match_param_to_class(p_name, known_class_names)
+                    if matched_cls:
+                        field_types_by_class.setdefault(owner_cls_id, {}).setdefault(
+                            f_name, set()
+                        ).add(matched_cls)
+
+    # Stage 2 pre-pass: infer method return types.
+    #
+    # Two sources:
+    #   (1) Explicit `-> ClassName` annotation on a method def.
+    #   (2) `return self.<field>` where the field's type is already in field_types_by_class.
+    #
+    # The result — method_return_types[method_id] = set of class names — is used in
+    # section C2 to propagate types through call chains without runtime information.
+    # Example: train_station.py calls train.get_route() -> get_route() has return type Route
+    # -> emit Method->Route Use edge -> creates the file-pair train_station.py -> route.py.
+    method_return_types: Dict[bytes, Set[str]] = {}
+
+    class _ReturnTypeVisitor(ast.NodeVisitor):
+        """Extract `return self.<field>` occurrences from a method body."""
+        def __init__(self) -> None:
+            self.return_self_fields: Set[str] = set()
+
+        def visit_Return(self, node: ast.Return) -> None:  # type: ignore[override]
+            if node.value is None:
+                return
+            val = node.value
+            # `return self.<field>`
+            if (
+                isinstance(val, ast.Attribute)
+                and isinstance(val.value, ast.Name)
+                and val.value.id == "self"
+            ):
+                self.return_self_fields.add(val.attr)
+            self.generic_visit(node)
+
+    def _extract_return_annotation(fdef: ast.FunctionDef) -> Optional[str]:
+        """Return the class name from `-> ClassName` annotation, or None."""
+        ann = getattr(fdef, "returns", None)
+        if ann is None:
+            return None
+        if isinstance(ann, ast.Name) and ann.id in known_class_names:
+            return ann.id
+        if isinstance(ann, ast.Constant) and isinstance(ann.value, str) and ann.value in known_class_names:
+            return ann.value
+        return None
+
+    for method_id, parent_id, method_name, method_start, method_end, content_id, _kind in method_rows:
+        owner_cls_id_s2: Optional[bytes] = None
+        if parent_id in class_ids:
+            owner_cls_id_s2 = parent_id
+        else:
+            owner_cls_id_s2 = method_owner_class.get(method_id) or infer_owner_class_from_span(
+                content_id, method_start, method_end
+            )
+        file_content_s2 = get_file_content(content_id, conn)
+        method_content_s2 = extract_method_lines(file_content_s2, method_start, method_end)
+        if not method_content_s2.strip():
+            continue
+        try:
+            tree_s2 = ast.parse(textwrap.dedent(method_content_s2))
+        except SyntaxError:
+            continue
+
+        fdef_s2 = next(
+            (n for n in ast.walk(tree_s2) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))),
+            None,
+        )
+        if fdef_s2 is None:
+            continue
+
+        # Source (1): explicit annotation
+        ret_cls = _extract_return_annotation(fdef_s2)  # type: ignore[arg-type]
+        if ret_cls:
+            method_return_types.setdefault(method_id, set()).add(ret_cls)
+
+        # Source (2): `return self.<field>` where field has a known type
+        if owner_cls_id_s2 is not None:
+            rv = _ReturnTypeVisitor()
+            rv.visit(tree_s2)
+            for field_name_s2 in rv.return_self_fields:
+                cls_names_s2 = field_types_by_class.get(owner_cls_id_s2, {}).get(field_name_s2)
+                if cls_names_s2 and len(cls_names_s2) == 1:
+                    method_return_types.setdefault(method_id, set()).add(next(iter(cls_names_s2)))
 
     existing_create_by_src: Dict[bytes, Set[bytes]] = {}
     if is_stackgraphs:
@@ -1141,6 +1327,10 @@ def enhance_python_dependencies(
             new_deps_count += 1
 
         # (C2) self.field.method(...) -> Call using inferred field type.
+        # Stage 2 extension: also emit Method->ReturnClass Use edges when the called method's
+        # return type is a known class (via annotation or `return self.field` inference).
+        # This closes file-pair deps like train_station.py -> route.py when
+        # train_station.py calls train.get_route() and get_route() returns Route.
         if owner_cls_id is not None and facts.field_calls:
             for field_name, callee in facts.field_calls:
                 cls_id: Optional[bytes] = None
@@ -1161,13 +1351,33 @@ def enhance_python_dependencies(
                 resolved_call_targets_by_name.setdefault(callee, set()).add(tgt_mid)
                 key = (method_id, tgt_mid, "Call")
                 if key in existing:
-                    continue
-                cursor.execute(
-                    "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Call', ?, NULL)",
-                    (method_id, tgt_mid, method_start),
-                )
-                existing.add(key)
-                new_deps_count += 1
+                    pass  # still propagate return types even if Call edge already exists
+                else:
+                    cursor.execute(
+                        "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Call', ?, NULL)",
+                        (method_id, tgt_mid, method_start),
+                    )
+                    existing.add(key)
+                    new_deps_count += 1
+                # Stage 2: propagate return types of the called method.
+                for ret_cls_name in sorted(method_return_types.get(tgt_mid, set())):
+                    ret_cls_id = resolve_class_id_by_name(ret_cls_name, None)
+                    if ret_cls_id is None:
+                        continue
+                    # Only emit if return type is in a different file from the caller.
+                    cursor.execute("SELECT content_id FROM entities WHERE id = ?", (ret_cls_id,))
+                    ret_row = cursor.fetchone()
+                    if ret_row and ret_row[0] == content_id:
+                        continue
+                    ret_key = (method_id, ret_cls_id, "Use")
+                    if ret_key in existing:
+                        continue
+                    cursor.execute(
+                        "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Use', ?, NULL)",
+                        (method_id, ret_cls_id, method_start),
+                    )
+                    existing.add(ret_key)
+                    new_deps_count += 1
 
         # (D) var.method(...) with inferred var type -> Call.
         for var, callee in facts.var_calls:
@@ -1375,6 +1585,41 @@ def enhance_python_dependencies(
                 cursor.execute("DELETE FROM deps WHERE kind = 'Create' AND src = ? AND tgt = ?", (method_id, tgt_id))
             existing_create_by_src[method_id] = set(allowed_create_targets)
 
+    # (F) Field->Class Use edges from inferred field types.
+    # For each field whose type was inferred (via constructor, annotation, setter, or append),
+    # insert a Use edge from the Field entity to the Class entity of the inferred type.
+    # This captures structural coupling like Ticket.passenger -> Passenger.
+    for cls_id, field_map in field_types_by_class.items():
+        for field_name, cls_names in field_map.items():
+            if len(cls_names) != 1:
+                continue  # skip ambiguous
+            inferred_cls_name = next(iter(cls_names))
+            field_id = resolve_inherited_field(cls_id, field_name)
+            if field_id is None:
+                continue
+            # Get content_id for the field (to filter out same-file edges)
+            cursor.execute("SELECT content_id FROM entities WHERE id = ?", (field_id,))
+            row = cursor.fetchone()
+            field_content_id: Optional[bytes] = row[0] if row else None
+            # Resolve target class — pass None so cross-file classes are found
+            tgt_cls_id = resolve_class_id_by_name(inferred_cls_name, None)
+            if tgt_cls_id is None:
+                continue
+            # Skip same-file edges (already handled by other mechanisms)
+            cursor.execute("SELECT content_id FROM entities WHERE id = ?", (tgt_cls_id,))
+            tgt_row = cursor.fetchone()
+            if tgt_row and tgt_row[0] == field_content_id:
+                continue
+            key = (field_id, tgt_cls_id, "Use")
+            if key in existing:
+                continue
+            cursor.execute(
+                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Use', 0, NULL)",
+                (field_id, tgt_cls_id),
+            )
+            existing.add(key)
+            new_deps_count += 1
+
     conn.commit()
 
     # STEP 4: Add abstract method Override dependencies
@@ -1472,6 +1717,148 @@ def enhance_python_dependencies(
     print(f"\n[OK] Added {override_deps_count} Override dependencies")
     if field_field_deps_added:
         print(f"[OK] Added {field_field_deps_added} Field->Field Use dependencies")
+
+    # -----------------------------------------------------------------------
+    # OPTIONAL: Transitive-inheritance Import edges
+    # -----------------------------------------------------------------------
+    # When class C extends B extends A, NeoDepends records Import(C_file -> B_file)
+    # and Import(B_file -> A_file) but NOT Import(C_file -> A_file).
+    # With --include-transitive-inheritance we materialise the full transitive closure
+    # so that architecture tools see the coupling to all ancestor files.
+    transitive_inherit_added = 0
+    if include_transitive_inheritance and bases_by_class:
+        # Build content_id -> file_id (File entities share content_id with their Classes)
+        file_id_by_content: Dict[bytes, bytes] = {}
+        for fid, _fname, fcid in file_rows:
+            file_id_by_content[fcid] = fid
+
+        def _class_file_id(cid: bytes) -> Optional[bytes]:
+            cid_content = class_content_id.get(cid)
+            if cid_content is None:
+                return None
+            return file_id_by_content.get(cid_content)
+
+        # Compute transitive closure: for each class, find ALL ancestor class IDs
+        def _all_ancestors(cid: bytes, visited: Optional[Set[bytes]] = None) -> Set[bytes]:
+            if visited is None:
+                visited = set()
+            for base in bases_by_class.get(cid, []):
+                if base not in visited:
+                    visited.add(base)
+                    _all_ancestors(base, visited)
+            return visited
+
+        cursor.execute("SELECT src, tgt FROM deps WHERE kind = 'Import'")
+        existing_file_imports: Set[Tuple[bytes, bytes]] = {(s, t) for s, t in cursor.fetchall()}
+
+        for child_class_id in bases_by_class:
+            child_file_id = _class_file_id(child_class_id)
+            if child_file_id is None:
+                continue
+            ancestors = _all_ancestors(child_class_id)
+            for ancestor_class_id in ancestors:
+                ancestor_file_id = _class_file_id(ancestor_class_id)
+                if ancestor_file_id is None or ancestor_file_id == child_file_id:
+                    continue
+                key = (child_file_id, ancestor_file_id)
+                if key in existing_file_imports:
+                    continue
+                cursor.execute(
+                    "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Import', 0, NULL)",
+                    (child_file_id, ancestor_file_id),
+                )
+                existing_file_imports.add(key)
+                transitive_inherit_added += 1
+
+        if transitive_inherit_added:
+            conn.commit()
+            print(f"[OK] Added {transitive_inherit_added} transitive-inheritance Import file->file edges")
+
+    # -----------------------------------------------------------------------
+    # OPTIONAL: Type-annotated parameter Import edges
+    # -----------------------------------------------------------------------
+    # Scans PEP-484 type annotations on method parameters (e.g. `def f(self, p: Passenger)`).
+    # For each annotated type that names a known class in the project, adds an Import edge
+    # from the method's file to the class's file (if not already present).
+    # This captures structural coupling that exists even when no explicit import statement
+    # is written (duck-typed params, forward-declared types, injected dependencies).
+    type_annot_added = 0
+    if type_annotated_params:
+        # Build content_id -> file_id if not already done above
+        if not include_transitive_inheritance:
+            file_id_by_content = {}
+            for fid, _fname, fcid in file_rows:
+                file_id_by_content[fcid] = fid
+
+            def _class_file_id(cid: bytes) -> Optional[bytes]:  # type: ignore[misc]
+                cid_content = class_content_id.get(cid)
+                if cid_content is None:
+                    return None
+                return file_id_by_content.get(cid_content)
+
+        cursor.execute("SELECT src, tgt FROM deps WHERE kind = 'Import'")
+        existing_file_imports_annot: Set[Tuple[bytes, bytes]] = {(s, t) for s, t in cursor.fetchall()}
+
+        def _extract_annotation_class_names(annotation: ast.expr) -> List[str]:
+            """Return simple class names referenced in an annotation node."""
+            names: List[str] = []
+            if isinstance(annotation, ast.Name):
+                names.append(annotation.id)
+            elif isinstance(annotation, ast.Attribute):
+                # e.g. module.ClassName — use just the attr
+                names.append(annotation.attr)
+            elif isinstance(annotation, ast.Subscript):
+                # e.g. Optional[X], List[X] — recurse into slice
+                names.extend(_extract_annotation_class_names(annotation.value))
+                if hasattr(annotation.slice, "elts"):  # Union[A, B]
+                    for elt in annotation.slice.elts:  # type: ignore[attr-defined]
+                        names.extend(_extract_annotation_class_names(elt))
+                else:
+                    names.extend(_extract_annotation_class_names(annotation.slice))
+            elif isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+                # Forward reference string: "ClassName"
+                names.append(annotation.value)
+            return names
+
+        for src_file_id, src_file_name, src_content_id in file_rows:
+            if not src_file_name.endswith(".py"):
+                continue
+            content = get_file_content(src_content_id, conn)
+            if not content.strip():
+                continue
+            try:
+                tree = ast.parse(content)
+            except SyntaxError:
+                continue
+
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                for arg in node.args.args + node.args.posonlyargs + node.args.kwonlyargs:
+                    if arg.annotation is None:
+                        continue
+                    for class_name in _extract_annotation_class_names(arg.annotation):
+                        if class_name in ("self", "cls"):
+                            continue
+                        # Resolve to class entity in the DB
+                        tgt_class_ids = class_ids_by_name.get(class_name, [])
+                        for tgt_class_id in tgt_class_ids:
+                            tgt_file_id = _class_file_id(tgt_class_id)
+                            if tgt_file_id is None or tgt_file_id == src_file_id:
+                                continue
+                            key = (src_file_id, tgt_file_id)
+                            if key in existing_file_imports_annot:
+                                continue
+                            cursor.execute(
+                                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Import', 0, NULL)",
+                                (src_file_id, tgt_file_id),
+                            )
+                            existing_file_imports_annot.add(key)
+                            type_annot_added += 1
+
+        if type_annot_added:
+            conn.commit()
+            print(f"[OK] Added {type_annot_added} type-annotation-derived Import file->file edges")
 
     conn.commit()
     conn.close()
@@ -1705,6 +2092,24 @@ def main() -> int:
         action="store_true",
         help="Allow multi-type narrowing (e.g., isinstance(x, (A,B))) to resolve calls for all types",
     )
+    parser.add_argument(
+        "--include-transitive-inheritance",
+        action="store_true",
+        help=(
+            "Add Import file->file edges for transitive base-class files. "
+            "E.g. if C extends B extends A, adds Import(C_file -> A_file) even if C never "
+            "directly imports A. Useful for architecture-level coupling analysis."
+        ),
+    )
+    parser.add_argument(
+        "--type-annotated-params",
+        action="store_true",
+        help=(
+            "Add Import file->file edges derived from PEP-484 type annotations on method "
+            "parameters. E.g. `def f(self, p: Passenger)` adds Import(this_file -> passenger.py) "
+            "even if no explicit import statement exists. Captures duck-typed structural coupling."
+        ),
+    )
     args = parser.parse_args()
 
     db_path = args.database_path
@@ -1730,6 +2135,8 @@ def main() -> int:
         source_root,
         profile=profile,
         allow_ambiguous_types=bool(args.allow_ambiguous_types),
+        include_transitive_inheritance=bool(args.include_transitive_inheritance),
+        type_annotated_params=bool(args.type_annotated_params),
     )
 
     print(f"\n{'='*70}")
