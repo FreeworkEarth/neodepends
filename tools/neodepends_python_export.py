@@ -2695,14 +2695,18 @@ def main() -> int:
             if args.stackgraphs_python_mode == "use-only":  # User didn't change default
                 args.stackgraphs_python_mode = "ast"
             # dv8_hierarchy already defaults to "structured"
-            args.align_handcount = True  # Enable --filter-architecture
+            # NOTE: align_handcount is NOT forced here. It filters file-level DSM to Import-only,
+            # which is correct for handcount benchmark comparison but wrong for DV8 M-Score /
+            # temporal analysis (which needs Call/Create/Use edges to build a layered DRH).
+            # Callers that want benchmark mode must pass --align-handcount / --filter-architecture explicitly.
             args.filter_stackgraphs_false_positives = True
 
         # Apply Java preset
         elif preset_type == "java":
             # args.resolver already defaults to "depends"
             # dv8_hierarchy already defaults to "structured"
-            args.align_handcount = True  # Enable --filter-architecture
+            # NOTE: align_handcount is NOT forced here (same reason as Python preset above).
+            pass
 
     neodepends_bin: Path = _resolve_path_arg(
         args.neodepends_bin, prefer_agent_root=False, must_exist=True, kind="NeoDepends binary"
