@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Lead Scraper</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Business Lead Scraper</h1>
+    <p>Search for businesses and export clean lead data</p>
+  </header>
+
+  <main>
+    <section class="search-panel">
+      <div class="search-row">
+        <input
+          id="query"
+          type="text"
+          placeholder='e.g. "gas stations in Austin TX" or "industrial suppliers in Detroit MI"'
+          autocomplete="off"
+        >
+        <button id="search-btn" onclick="handleSearch()">Search</button>
+      </div>
+    </section>
+
+    <section id="status-bar" class="hidden"></section>
+
+    <section id="results-panel" class="hidden">
+      <div class="results-meta">
+        <span id="results-count"></span>
+        <button id="csv-btn" class="csv-btn hidden" onclick="downloadCSV()">Download CSV</button>
+      </div>
+      <div class="table-wrapper">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Address</th>
+              <th>Phone</th>
+              <th>Website</th>
+              <th>Rating</th>
+              <th>Maps</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

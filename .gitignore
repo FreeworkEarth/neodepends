@@ -1,5 +1,8 @@
 /target
 /release
+
+# Lead scraper — never commit the real API key
+leads/.env
 .DS_Store
 __pycache__/
 *.pyc
