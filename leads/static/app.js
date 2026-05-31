@@ -2,7 +2,10 @@ let leadsData = [];
 
 function handleSearch() {
   const query = document.getElementById("query").value.trim();
-  if (!query) return;
+  if (!query) {
+    document.getElementById("query").focus();
+    return;
+  }
   search(query);
 }
 
@@ -13,8 +16,9 @@ document.getElementById("query").addEventListener("keydown", function (e) {
 async function search(query) {
   leadsData = [];
   setSearching(true);
+  hideEmpty();
   hideResults();
-  showStatus("info", "Fetching results from Google Places…");
+  showStatus("info", "Searching Google Places…", true);
 
   let data;
   try {
@@ -31,19 +35,22 @@ async function search(query) {
   }
 
   if (data.error) {
-    showStatus("error", "Google API error: " + data.error + " (" + data.status + ")");
+    const detail = data.status && data.status !== data.error
+      ? data.error + " (" + data.status + ")"
+      : data.error;
+    showStatus("error", "Google API error: " + detail);
     setSearching(false);
     return;
   }
 
   if (data.status === "ZERO_RESULTS" || data.count === 0) {
-    showStatus("info", "No results found for that query. Try a different search.");
+    showStatus("info", "No results found. Try a different location or business type.");
     setSearching(false);
     return;
   }
 
-  renderTable(data.places);
-  showStatus("info", "Enriching " + data.places.length + " results with contact details…", true);
+  renderSkeleton(data.places);
+  showStatus("info", "Fetching contact details for " + data.places.length + " businesses…", true);
 
   await enrichDetails(data.places);
 
@@ -51,9 +58,10 @@ async function search(query) {
   setSearching(false);
 }
 
-function renderTable(places) {
+function renderSkeleton(places) {
   const tbody = document.getElementById("results-body");
   tbody.innerHTML = "";
+  leadsData = [];
 
   places.forEach((place) => {
     const tr = document.createElement("tr");
@@ -62,10 +70,10 @@ function renderTable(places) {
     tr.innerHTML =
       '<td class="name">' + esc(place.name) + "</td>" +
       '<td class="address">' + esc(place.address) + "</td>" +
-      '<td class="phone"><span class="loading">Loading…</span></td>' +
-      '<td class="website"><span class="loading">Loading…</span></td>' +
+      '<td class="phone"><span class="skel" style="width:' + skelW(72, 118) + 'px" aria-label="Loading"></span></td>' +
+      '<td class="website"><span class="skel" style="width:' + skelW(55, 105) + 'px" aria-label="Loading"></span></td>' +
       '<td class="rating">' + ratingHtml(place.rating) + "</td>" +
-      '<td class="maps"><span class="loading">Loading…</span></td>';
+      '<td class="maps"><span class="skel" style="width:38px" aria-label="Loading"></span></td>';
 
     tbody.appendChild(tr);
 
@@ -80,10 +88,15 @@ function renderTable(places) {
     });
   });
 
+  const count = places.length;
   document.getElementById("results-count").textContent =
-    places.length + " business" + (places.length === 1 ? "" : "es") + " found";
-  document.getElementById("results-panel").classList.remove("hidden");
+    count + " result" + (count === 1 ? "" : "s");
   document.getElementById("csv-btn").classList.add("hidden");
+  document.getElementById("results-panel").classList.remove("hidden");
+}
+
+function skelW(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 async function enrichDetails(places) {
@@ -97,8 +110,8 @@ async function enrichDetails(places) {
       body: JSON.stringify({ place_ids }),
     });
     details = await resp.json();
-  } catch (e) {
-    return;
+  } catch (_) {
+    details = {};
   }
 
   places.forEach((place) => {
@@ -109,32 +122,32 @@ async function enrichDetails(places) {
     const cells = tr.querySelectorAll("td");
 
     // Phone
-    cells[2].textContent = d.phone || "—";
+    cells[2].innerHTML = d.phone
+      ? esc(d.phone)
+      : '<span class="null-dash">—</span>';
 
     // Website
     if (d.website) {
       let domain;
-      try {
-        domain = new URL(d.website).hostname.replace(/^www\./, "");
-      } catch (_) {
-        domain = d.website;
-      }
+      try { domain = new URL(d.website).hostname.replace(/^www\./, ""); }
+      catch (_) { domain = d.website; }
       cells[3].innerHTML =
-        '<a href="' + esc(d.website) + '" target="_blank" rel="noopener" class="website-text" title="' + esc(d.website) + '">' +
+        '<a href="' + esc(d.website) + '" target="_blank" rel="noopener" class="website-link" title="' + esc(d.website) + '">' +
         esc(domain) + "</a>";
     } else {
-      cells[3].textContent = "—";
+      cells[3].innerHTML = '<span class="null-dash">—</span>';
     }
 
     // Maps
     if (d.maps_url) {
       cells[5].innerHTML =
-        '<a href="' + esc(d.maps_url) + '" target="_blank" rel="noopener" class="maps-link">View ↗</a>';
+        '<a href="' + esc(d.maps_url) + '" target="_blank" rel="noopener" class="maps-link">' +
+        '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 8l6-6M3 2h5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        "View</a>";
     } else {
-      cells[5].textContent = "—";
+      cells[5].innerHTML = '<span class="null-dash">—</span>';
     }
 
-    // Update leadsData entry
     const entry = leadsData.find((x) => x.place_id === place.place_id);
     if (entry) {
       entry.phone = d.phone || "";
@@ -178,8 +191,10 @@ function downloadCSV() {
 
 function showStatus(type, message, spinner) {
   const bar = document.getElementById("status-bar");
-  bar.className = type;
-  bar.innerHTML = (spinner ? '<div class="spinner"></div>' : "") + "<span>" + esc(message) + "</span>";
+  bar.className = "status " + type;
+  bar.innerHTML =
+    (spinner ? '<div class="spinner" role="img" aria-label="Loading"></div>' : "") +
+    '<span>' + esc(message) + '</span>';
   bar.classList.remove("hidden");
 }
 
@@ -192,13 +207,26 @@ function hideResults() {
   document.getElementById("results-body").innerHTML = "";
 }
 
+function hideEmpty() {
+  document.getElementById("empty-state").classList.add("hidden");
+}
+
 function setSearching(on) {
-  document.getElementById("search-btn").disabled = on;
+  const btn = document.getElementById("search-btn");
+  btn.disabled = on;
+  btn.textContent = on ? "Searching…" : "Search";
 }
 
 function ratingHtml(rating) {
-  if (rating == null) return "—";
-  return '<span class="star">&#9733;</span> ' + rating.toFixed(1);
+  if (rating == null) return '<span class="null-dash">—</span>';
+  return (
+    '<span class="rating-val">' +
+    '<svg class="star-icon" width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">' +
+    '<path d="M6 1l1.18 2.4 2.64.38-1.91 1.86.45 2.63L6 7.05 3.64 8.27l.45-2.63L2.18 3.78l2.64-.38L6 1z"/>' +
+    '</svg>' +
+    rating.toFixed(1) +
+    '</span>'
+  );
 }
 
 function esc(str) {

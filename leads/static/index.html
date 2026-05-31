@@ -3,51 +3,89 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Business Lead Scraper</title>
+  <title>Lead Finder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Business Lead Scraper</h1>
-    <p>Search for businesses and export clean lead data</p>
+  <header class="app-header">
+    <div class="header-inner">
+      <svg class="app-mark" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="10" cy="10" r="3" fill="currentColor"/>
+        <line x1="10" y1="1" x2="10" y2="4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="10" y1="15.5" x2="10" y2="19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="1" y1="10" x2="4.5" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="15.5" y1="10" x2="19" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <span class="app-name">Lead Finder</span>
+    </div>
   </header>
 
-  <main>
-    <section class="search-panel">
-      <div class="search-row">
+  <main class="app-main">
+    <div class="search-wrap">
+      <div class="search-field" id="search-field">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
         <input
           id="query"
           type="text"
-          placeholder='e.g. "gas stations in Austin TX" or "industrial suppliers in Detroit MI"'
+          placeholder="gas stations in Austin TX"
           autocomplete="off"
+          spellcheck="false"
+          aria-label="Search query"
         >
         <button id="search-btn" onclick="handleSearch()">Search</button>
       </div>
-    </section>
+    </div>
 
-    <section id="status-bar" class="hidden"></section>
+    <div id="status-bar" class="status hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
-    <section id="results-panel" class="hidden">
-      <div class="results-meta">
-        <span id="results-count"></span>
-        <button id="csv-btn" class="csv-btn hidden" onclick="downloadCSV()">Download CSV</button>
+    <section id="results-panel" class="results hidden" aria-label="Search results">
+      <div class="results-header">
+        <span id="results-count" class="results-count" aria-live="polite"></span>
+        <button id="csv-btn" class="btn-ghost hidden" onclick="downloadCSV()">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M7 1v8M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          Export CSV
+        </button>
       </div>
-      <div class="table-wrapper">
+      <div class="table-scroll" role="region" aria-label="Business results" tabindex="0">
         <table id="results-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Address</th>
-              <th>Phone</th>
-              <th>Website</th>
-              <th>Rating</th>
-              <th>Maps</th>
+              <th scope="col">Business</th>
+              <th scope="col">Address</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Website</th>
+              <th scope="col">Rating</th>
+              <th scope="col">Maps</th>
             </tr>
           </thead>
           <tbody id="results-body"></tbody>
         </table>
       </div>
     </section>
+
+    <div id="empty-state" class="empty-state" role="region" aria-label="Search prompt">
+      <svg class="empty-icon" width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="15" cy="15" r="10.5" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="15" cy="15" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="15" y1="3" x2="15" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="15" y1="23" x2="15" y2="27" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="3" y1="15" x2="7" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="23" y1="15" x2="27" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M22 22l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <p class="empty-title">Find your next batch of leads</p>
+      <p class="empty-hint">Type a business type and location: "plumbers in Chicago IL" or "auto shops near Nashville TN"</p>
+    </div>
   </main>
 
   <script src="app.js"></script>
