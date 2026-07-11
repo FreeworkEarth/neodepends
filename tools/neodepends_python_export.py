@@ -416,6 +416,12 @@ def run_neodepends(
     else:
         raise ValueError(f"Unknown resolver: {resolver}")
 
+    # The binary operates in git-commit mode. When input_dir is a git worktree or repo,
+    # passing no commit defaults to WORKDIR — which has no staged content in a detached HEAD
+    # worktree → 0 entities. Explicitly pass HEAD to scan the checked-out commit.
+    if (input_dir / ".git").exists():
+        cmd.append("HEAD")
+
     _run_and_tee(cmd, logger=logger)
 
 
