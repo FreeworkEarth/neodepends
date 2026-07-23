@@ -468,6 +468,8 @@ def enhance_python_dependencies(
         return ".".join(base)
 
     import_added = 0
+    import_lazy_added = 0
+    reclass_count = 0
     step0_changed = False
     for src_file_id, src_file_name, src_content_id in file_rows:
         if not src_file_name.endswith(".py"):
@@ -480,44 +482,87 @@ def enhance_python_dependencies(
         except SyntaxError:
             continue
 
-        targets: Set[str] = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    tgt = _module_to_file(alias.name)
-                    if tgt:
-                        targets.add(tgt)
-            elif isinstance(node, ast.ImportFrom):
-                abs_mod = _resolve_relative(node.module, getattr(node, "level", 0) or 0, src_file_name)
+        # --- Edge-schema v2: scope-aware import classification ---
+        # Module-level imports = direct children of tree.body (cause import-order cycles).
+        # Function-level imports = inside def/class bodies (deferred; no import-order risk).
+        # See CC_WEAKNESSES_archagent.md §1.
 
-                # Prefer `from pkg import submodule` as pkg.submodule when it exists.
-                if abs_mod:
-                    for alias in node.names:
-                        tgt = _module_to_file(f"{abs_mod}.{alias.name}")
-                        if tgt:
-                            targets.add(tgt)
+        def _resolve_import_targets(stmts):
+            """Collect resolved file targets from a sequence of AST statements."""
+            tgts: Set[str] = set()
+            for s in stmts:
+                if isinstance(s, ast.Import):
+                    for alias in s.names:
+                        t = _module_to_file(alias.name)
+                        if t:
+                            tgts.add(t)
+                elif isinstance(s, ast.ImportFrom):
+                    abs_mod = _resolve_relative(s.module, getattr(s, "level", 0) or 0, src_file_name)
+                    if abs_mod:
+                        for alias in s.names:
+                            t = _module_to_file(f"{abs_mod}.{alias.name}")
+                            if t:
+                                tgts.add(t)
+                        t = _module_to_file(abs_mod)
+                        if t:
+                            tgts.add(t)
+            return tgts
 
-                # Otherwise resolve the base module itself (e.g. `from tts.ticket import Ticket`).
-                if abs_mod:
-                    tgt = _module_to_file(abs_mod)
-                    if tgt:
-                        targets.add(tgt)
+        # Module-level: only tree.body direct children
+        ml_targets = _resolve_import_targets(tree.body)
 
-        for tgt_file_name in sorted(targets):
+        # All imports (module-level + function-level) via ast.walk
+        all_targets = _resolve_import_targets(ast.walk(tree))
+
+        # Function-level only = present in walk but not in tree.body
+        fl_only_targets = all_targets - ml_targets
+
+        # Insert NEW module-level imports as 'Import'
+        for tgt_file_name in sorted(ml_targets):
             tgt_file_id = file_id_by_name.get(tgt_file_name)
             if not tgt_file_id:
                 continue
             key = (src_file_id, tgt_file_id)
             if key in existing_imports:
                 continue
-            row = 0
             cursor.execute(
-                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Import', ?, NULL)",
-                (src_file_id, tgt_file_id, row),
+                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'Import', 0, NULL)",
+                (src_file_id, tgt_file_id),
             )
             existing_imports.add(key)
             import_added += 1
             step0_changed = True
+
+        # Insert NEW function-level-only imports as 'ImportLazy'
+        for tgt_file_name in sorted(fl_only_targets):
+            tgt_file_id = file_id_by_name.get(tgt_file_name)
+            if not tgt_file_id:
+                continue
+            key = (src_file_id, tgt_file_id)
+            if key in existing_imports:
+                continue
+            cursor.execute(
+                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'ImportLazy', 0, NULL)",
+                (src_file_id, tgt_file_id),
+            )
+            existing_imports.add(key)
+            import_lazy_added += 1
+            step0_changed = True
+
+        # Reclassify EXISTING stackgraphs Import edges for function-level-only targets.
+        # StackGraphs treats all imports identically; this corrects the scope.
+        if is_stackgraphs and fl_only_targets:
+            for tgt_file_name in fl_only_targets:
+                tgt_file_id = file_id_by_name.get(tgt_file_name)
+                if not tgt_file_id:
+                    continue
+                cursor.execute(
+                    "UPDATE deps SET kind = 'ImportLazy' "
+                    "WHERE src = ? AND tgt = ? AND kind = 'Import'",
+                    (src_file_id, tgt_file_id),
+                )
+                if cursor.rowcount > 0:
+                    reclass_count += cursor.rowcount
 
     # StackGraphs(+AST) tends to create an additional package-level Import edge:
     #   some_module.py -> pkg/__init__.py
@@ -527,12 +572,12 @@ def enhance_python_dependencies(
     # are treated as noise because the meaningful module dependency is already captured as:
     #   some_module.py -> pkg/sub.py
     #
-    # Remove File->File Import edges that target any __init__.py (except self-import).
+    # Remove File->File Import AND ImportLazy edges that target any __init__.py (except self-import).
     if is_stackgraphs:
         cursor.execute(
             """
             DELETE FROM deps
-            WHERE kind = 'Import'
+            WHERE kind IN ('Import', 'ImportLazy')
               AND src IN (SELECT id FROM entities WHERE kind = 'File')
               AND tgt IN (
                 SELECT id FROM entities
@@ -572,9 +617,13 @@ def enhance_python_dependencies(
         if removed_module_field_uses:
             step0_changed = True
 
-    if step0_changed:
+    if step0_changed or reclass_count:
         conn.commit()
     print(f"Import deps added: {import_added}")
+    if import_lazy_added:
+        print(f"ImportLazy deps added: {import_lazy_added}")
+    if reclass_count:
+        print(f"Import edges reclassified as ImportLazy (edge-schema v2): {reclass_count}")
 
     new_deps_count = 0
     field_field_deps_added = 0
@@ -877,6 +926,15 @@ def enhance_python_dependencies(
         camel = "".join(p.capitalize() for p in var.split("_") if p)
         return resolve_class_id_by_name(camel, preferred_content_id)
 
+    # Method names that shadow Python builtins / stdlib container protocols.
+    # These must never be resolved via unique_method_owner because every
+    # unresolved `var.get(...)` in the project would bind to the single class
+    # that happens to define `.get()`, creating hundreds of phantom Call edges.
+    _STDLIB_SHADOW_METHODS = frozenset({
+        "get", "set", "delete", "update", "keys", "values", "items",
+        "pop", "clear", "add", "remove", "append", "extend", "insert",
+        "close", "read", "write", "send", "format", "copy", "sort",
+    })
     unique_method_owner: Dict[str, bytes] = {}
     method_owner_counts: Dict[str, int] = {}
     for cid, methods in methods_by_class.items():
@@ -884,7 +942,7 @@ def enhance_python_dependencies(
             method_owner_counts[mname] = method_owner_counts.get(mname, 0) + 1
     for cid, methods in methods_by_class.items():
         for mname in methods.keys():
-            if method_owner_counts.get(mname) == 1:
+            if method_owner_counts.get(mname) == 1 and mname not in _STDLIB_SHADOW_METHODS:
                 unique_method_owner[mname] = cid
 
     # Cache existing deps to avoid repeated SQL lookups.
