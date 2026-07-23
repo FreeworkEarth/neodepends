@@ -801,6 +801,7 @@ def export_dv8_file_level(
     align_handcount: bool,
     dv8_hierarchy: str,
     collapse_weights: bool = False,
+    exclude_lazy_imports: bool = False,
 ) -> None:
     """
     Export a single DV8 dependency matrix at FILE level.
@@ -854,6 +855,11 @@ def export_dv8_file_level(
             continue
 
         if not include_self_edges and src_file_id == tgt_file_id:
+            continue
+
+        # Edge-schema v2: exclude ImportLazy edges from DSM when requested.
+        # Package-cycle detection should run on module-level imports only.
+        if exclude_lazy_imports and dep_kind == "ImportLazy":
             continue
 
         if in_focus(tgt_file_name):
@@ -2462,6 +2468,22 @@ def main() -> int:
         help="Path to filter_false_positives.py (default: use filter_false_positives.py from 00_NEODEPENDS/)",
     )
     parser.add_argument(
+        "--resolve-shadow-imports",
+        action="store_true",
+        default=False,
+        help=(
+            "Run resolve_shadow_imports.py after enhancement to remove phantom Import edges "
+            "caused by stdlib-shadow name collisions (e.g. project logging.py vs stdlib logging). "
+            "Enabled automatically by the python preset."
+        ),
+    )
+    parser.add_argument(
+        "--resolve-shadow-imports-script",
+        type=Path,
+        default=None,
+        help="Path to resolve_shadow_imports.py (default: auto-discovered next to this script)",
+    )
+    parser.add_argument(
         "--experiment-all",
         action="store_true",
         help="Run: depends + stackgraphs(ast) + stackgraphs(use-only) into subfolders and write a combined comparison file",
@@ -2637,6 +2659,15 @@ def main() -> int:
         help="Disable full DV8 DSM + clustering export",
     )
     parser.add_argument(
+        "--exclude-lazy-imports",
+        action="store_true",
+        default=False,
+        help="Exclude ImportLazy edges from file-level DSM exports. "
+             "ImportLazy = function-level imports (no import-order cycle risk). "
+             "Use this for package-cycle detection on module-level imports only "
+             "(edge-schema v2, see CC_WEAKNESSES_archagent.md §1).",
+    )
+    parser.add_argument(
         "--config",
         choices=["automatic", "default", "python", "java", "manual"],
         default="manual",
@@ -2706,6 +2737,7 @@ def main() -> int:
             # temporal analysis (which needs Call/Create/Use edges to build a layered DRH).
             # Callers that want benchmark mode must pass --align-handcount / --filter-architecture explicitly.
             args.filter_stackgraphs_false_positives = True
+            args.resolve_shadow_imports = True
 
         # Apply Java preset
         elif preset_type == "java":
@@ -2766,6 +2798,11 @@ def main() -> int:
         # Prefer the vendored script inside this repo for self-contained releases.
         local = Path(__file__).resolve().parent / "filter_false_positives.py"
         filter_fp_script = local if local.exists() else (Path(__file__).resolve().parents[2] / "filter_false_positives.py")
+
+    shadow_script = args.resolve_shadow_imports_script
+    if shadow_script is None:
+        local = Path(__file__).resolve().parent / "resolve_shadow_imports.py"
+        shadow_script = local if local.exists() else None
 
     check_enhance_script(enhance_script, langs, bool(getattr(args, 'no_enhance', False)))
     check_filter_script(filter_fp_script, bool(getattr(args, 'filter_stackgraphs_false_positives', False)), args.resolver)
@@ -2984,6 +3021,7 @@ def main() -> int:
                         align_handcount=align_handcount,
                         dv8_hierarchy=dv8_hierarchy,
                         collapse_weights=collapse_weights,
+                        exclude_lazy_imports=bool(args.exclude_lazy_imports),
                     )
                 if full_dv8:
                     export_dv8_full_project(
@@ -3050,6 +3088,7 @@ def main() -> int:
                             align_handcount=align_handcount,
                             dv8_hierarchy=dv8_hierarchy,
                             collapse_weights=collapse_weights,
+                            exclude_lazy_imports=bool(args.exclude_lazy_imports),
                         )
                     if full_dv8:
                         export_dv8_full_project(
@@ -3121,6 +3160,7 @@ def main() -> int:
                         align_handcount=False,
                         dv8_hierarchy=dv8_hierarchy,
                         collapse_weights=False,
+                        exclude_lazy_imports=bool(args.exclude_lazy_imports),
                     )
                 if full_dv8:
                     export_dv8_full_project(
@@ -3166,6 +3206,30 @@ def main() -> int:
                         raise wrap_subprocess_error(exc, "Java dependency enhancement", java_enhance_script)
 
             check_db_integrity_after_enhancement(db_path)
+
+            # Shadow-import resolution: remove phantom Import edges caused by
+            # stdlib name collisions (e.g. project logging.py vs stdlib logging).
+            # Runs after enhancement so it sees final Import/ImportLazy classification.
+            if bool(getattr(args, "resolve_shadow_imports", False)):
+                if shadow_script and shadow_script.exists():
+                    ulog.step("Resolving stdlib-shadow imports")
+                    shadow_report_path = data_dir / "shadow_report.json"
+                    try:
+                        _run_and_tee(
+                            [
+                                _get_python_executable(),
+                                str(shadow_script),
+                                str(db_path),
+                                str(project_root),
+                                "--report", str(shadow_report_path),
+                            ],
+                            logger=logger,
+                        )
+                    except subprocess.CalledProcessError as exc:
+                        raise wrap_subprocess_error(exc, "Shadow-import resolution", shadow_script)
+                else:
+                    ulog.info("Shadow-import resolution requested but resolve_shadow_imports.py not found — skipping")
+
             with _connect_ro(db_path) as _chk:
                 _entity_count = _chk.execute("SELECT COUNT(*) FROM entities").fetchone()[0]
             if _entity_count == 0:
@@ -3200,6 +3264,7 @@ def main() -> int:
                     align_handcount=align_handcount,
                     dv8_hierarchy=dv8_hierarchy,
                     collapse_weights=collapse_weights,
+                    exclude_lazy_imports=bool(args.exclude_lazy_imports),
                 )
             if full_dv8:
                 export_dv8_full_project(
