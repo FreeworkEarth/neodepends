@@ -802,12 +802,19 @@ def export_dv8_file_level(
     dv8_hierarchy: str,
     collapse_weights: bool = False,
     exclude_lazy_imports: bool = False,
+    import_scoped: bool = True,
 ) -> None:
     """
     Export a single DV8 dependency matrix at FILE level.
 
     Nodes: File entities
     Edges: aggregated dependency kinds between files (derived from entity-level deps)
+
+    When *import_scoped* is True (default), non-import edges (Use, Call,
+    Create, Extend, …) are only emitted between files that already share an
+    Import or ImportLazy edge.  This eliminates phantom edges caused by
+    StackGraphs resolving names to their *definition* site rather than their
+    *import* site (e.g. an enum used via re-export).
     """
     con = _connect_ro(db_path)
     entities = _load_entities(con)
@@ -836,6 +843,43 @@ def export_dv8_file_level(
     memo: Dict[bytes, Optional[bytes]] = {}
 
     dep_rows = cur.execute("SELECT src, tgt, kind FROM deps").fetchall()
+
+    # --- Import-scoped resolution (pass 1): collect file pairs with import
+    # or inheritance edges.  Import edges anchor direct coupling; Extend edges
+    # anchor transitive inheritance (overrides, inherited field access).
+    _IMPORT_KINDS = {"Import", "ImportLazy"}
+    _ANCHOR_KINDS = {"Import", "ImportLazy", "Extend"}
+    import_file_pairs: Set[Tuple[bytes, bytes]] = set()
+    if import_scoped:
+        extend_pairs: Set[Tuple[bytes, bytes]] = set()
+        for src_id, tgt_id, dep_kind in dep_rows:
+            if dep_kind not in _ANCHOR_KINDS:
+                continue
+            if src_id not in entities or tgt_id not in entities:
+                continue
+            src_fid = _ancestor_file_id(entities, src_id, memo)
+            tgt_fid = _ancestor_file_id(entities, tgt_id, memo)
+            if src_fid is not None and tgt_fid is not None and src_fid != tgt_fid:
+                import_file_pairs.add((src_fid, tgt_fid))
+                if dep_kind == "Extend":
+                    extend_pairs.add((src_fid, tgt_fid))
+        # Transitive closure on Extend chains ONLY: if A→B (Extend) and
+        # B→C (Extend), add A→C.  This lets Override/Use edges on grandparent
+        # classes survive.  We do NOT propagate Import→Extend (that would let
+        # "A imports B, B extends C" wrongly anchor A→C).
+        changed = True
+        while changed:
+            changed = False
+            new_pairs: Set[Tuple[bytes, bytes]] = set()
+            for a, b in extend_pairs:
+                for c, d in extend_pairs:
+                    if b == c and (a, d) not in import_file_pairs:
+                        new_pairs.add((a, d))
+            if new_pairs:
+                import_file_pairs |= new_pairs
+                changed = True
+
+    import_scoped_dropped = 0
     edges: List[Tuple[str, str, str]] = []
     for src_id, tgt_id, dep_kind in dep_rows:
         if src_id not in entities or tgt_id not in entities:
@@ -862,6 +906,21 @@ def export_dv8_file_level(
         if exclude_lazy_imports and dep_kind == "ImportLazy":
             continue
 
+        # ImportType = TYPE_CHECKING-guarded imports (design-time only, zero runtime
+        # coupling).  Always excluded from DSM exports — stays in the DB for data
+        # consumers that want the full picture.
+        if dep_kind == "ImportType":
+            continue
+
+        # --- Import-scoped resolution (pass 2): drop non-import edges whose
+        # file pair has no import relationship.  These are phantom edges caused
+        # by StackGraphs resolving names to definition sites rather than import
+        # sites (e.g. enum used via re-export, inherited field, polymorphic call).
+        if import_scoped and dep_kind not in _IMPORT_KINDS:
+            if (src_file_id, tgt_file_id) not in import_file_pairs:
+                import_scoped_dropped += 1
+                continue
+
         if in_focus(tgt_file_name):
             if align_handcount:
                 # Prefer Import-only file coupling when imports exist, but fall back to derived coupling
@@ -881,6 +940,9 @@ def export_dv8_file_level(
                 # Handcount DSM is internal-only.
                 continue
             edges.append((_aligned_file_node(src_file_name, dv8_hierarchy), f"(External File) {tgt_file_name}", dep_kind))
+
+    if import_scoped_dropped:
+        print(f"  [import-scoped] Dropped {import_scoped_dropped} entity-level edges with no import path")
 
     if align_handcount and not edges:
         # Fallback: derive file->file coupling from any cross-file edge when Import edges are missing.
@@ -2668,6 +2730,16 @@ def main() -> int:
              "(edge-schema v2, see CC_WEAKNESSES_archagent.md §1).",
     )
     parser.add_argument(
+        "--no-import-scoped",
+        action="store_true",
+        default=False,
+        help="Disable import-scoped resolution for file-level DSM exports. "
+             "By default, non-import edges (Use, Call, Create, Extend) are only "
+             "emitted between files that share an Import/ImportLazy edge. This "
+             "eliminates phantom edges from StackGraphs resolving names to their "
+             "definition site rather than import site.",
+    )
+    parser.add_argument(
         "--config",
         choices=["automatic", "default", "python", "java", "manual"],
         default="manual",
@@ -3022,6 +3094,7 @@ def main() -> int:
                         dv8_hierarchy=dv8_hierarchy,
                         collapse_weights=collapse_weights,
                         exclude_lazy_imports=bool(args.exclude_lazy_imports),
+                        import_scoped=not bool(args.no_import_scoped),
                     )
                 if full_dv8:
                     export_dv8_full_project(
@@ -3089,6 +3162,7 @@ def main() -> int:
                             dv8_hierarchy=dv8_hierarchy,
                             collapse_weights=collapse_weights,
                             exclude_lazy_imports=bool(args.exclude_lazy_imports),
+                            import_scoped=not bool(args.no_import_scoped),
                         )
                     if full_dv8:
                         export_dv8_full_project(
@@ -3161,6 +3235,7 @@ def main() -> int:
                         dv8_hierarchy=dv8_hierarchy,
                         collapse_weights=False,
                         exclude_lazy_imports=bool(args.exclude_lazy_imports),
+                        import_scoped=not bool(args.no_import_scoped),
                     )
                 if full_dv8:
                     export_dv8_full_project(
@@ -3265,6 +3340,7 @@ def main() -> int:
                     dv8_hierarchy=dv8_hierarchy,
                     collapse_weights=collapse_weights,
                     exclude_lazy_imports=bool(args.exclude_lazy_imports),
+                    import_scoped=not bool(args.no_import_scoped),
                 )
             if full_dv8:
                 export_dv8_full_project(

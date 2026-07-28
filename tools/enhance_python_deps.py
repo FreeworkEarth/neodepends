@@ -469,7 +469,9 @@ def enhance_python_dependencies(
 
     import_added = 0
     import_lazy_added = 0
+    import_type_added = 0
     reclass_count = 0
+    reclass_type_count = 0
     step0_changed = False
     for src_file_id, src_file_name, src_content_id in file_rows:
         if not src_file_name.endswith(".py"):
@@ -484,10 +486,24 @@ def enhance_python_dependencies(
 
         # --- Edge-schema v2: scope-aware import classification ---
         # Module-level imports = direct children of tree.body (cause import-order cycles).
+        #   Includes imports inside module-level try/if/with blocks (these execute
+        #   at import time, not deferred).
         # Function-level imports = inside def/class bodies (deferred; no import-order risk).
+        # TYPE_CHECKING imports = inside `if TYPE_CHECKING:` guards (design-time only,
+        #   zero runtime coupling) → classified as ImportType.
         # See CC_WEAKNESSES_archagent.md §1.
 
-        def _resolve_import_targets(stmts):
+        def _is_type_checking_guard(node: ast.If) -> bool:
+            """Check if an `if` node is `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`."""
+            test = node.test
+            if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+                return True
+            if (isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"
+                    and isinstance(test.value, ast.Name) and test.value.id == "typing"):
+                return True
+            return False
+
+        def _collect_imports_from_stmts(stmts, src_file: str) -> Set[str]:
             """Collect resolved file targets from a sequence of AST statements."""
             tgts: Set[str] = set()
             for s in stmts:
@@ -497,7 +513,7 @@ def enhance_python_dependencies(
                         if t:
                             tgts.add(t)
                 elif isinstance(s, ast.ImportFrom):
-                    abs_mod = _resolve_relative(s.module, getattr(s, "level", 0) or 0, src_file_name)
+                    abs_mod = _resolve_relative(s.module, getattr(s, "level", 0) or 0, src_file)
                     if abs_mod:
                         for alias in s.names:
                             t = _module_to_file(f"{abs_mod}.{alias.name}")
@@ -508,14 +524,81 @@ def enhance_python_dependencies(
                             tgts.add(t)
             return tgts
 
-        # Module-level: only tree.body direct children
-        ml_targets = _resolve_import_targets(tree.body)
+        def _collect_module_level_imports(body, src_file: str) -> Tuple[Set[str], Set[str]]:
+            """Walk module-level statements, recursing into try/if/with but NOT
+            into def/class.  Returns (import_targets, type_checking_targets)."""
+            imports: Set[str] = set()
+            type_only: Set[str] = set()
+            for stmt in body:
+                if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                    imports |= _collect_imports_from_stmts([stmt], src_file)
+                elif isinstance(stmt, ast.If):
+                    if _is_type_checking_guard(stmt):
+                        # TYPE_CHECKING guard → ImportType, not Import
+                        type_only |= _collect_imports_from_stmts(stmt.body, src_file)
+                    else:
+                        sub_imp, sub_tc = _collect_module_level_imports(stmt.body, src_file)
+                        imports |= sub_imp
+                        type_only |= sub_tc
+                        sub_imp, sub_tc = _collect_module_level_imports(stmt.orelse, src_file)
+                        imports |= sub_imp
+                        type_only |= sub_tc
+                elif isinstance(stmt, ast.Try):
+                    for block in [stmt.body, stmt.handlers, stmt.orelse, stmt.finalbody]:
+                        if isinstance(block, list):
+                            sub_stmts = []
+                            for item in block:
+                                if isinstance(item, ast.ExceptHandler):
+                                    sub_stmts.extend(item.body)
+                                else:
+                                    sub_stmts.append(item)
+                            sub_imp, sub_tc = _collect_module_level_imports(sub_stmts, src_file)
+                            imports |= sub_imp
+                            type_only |= sub_tc
+                elif isinstance(stmt, ast.With):
+                    sub_imp, sub_tc = _collect_module_level_imports(stmt.body, src_file)
+                    imports |= sub_imp
+                    type_only |= sub_tc
+                # ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef → skip (not module-level)
+            return imports, type_only
+
+        def _collect_importlib_literals(tree_node: ast.AST, src_file: str) -> Set[str]:
+            """Detect importlib.import_module("constant.string") calls → Import edges."""
+            targets: Set[str] = set()
+            for node in ast.walk(tree_node):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                # importlib.import_module("...")
+                is_import_module = False
+                if (isinstance(func, ast.Attribute) and func.attr == "import_module"
+                        and isinstance(func.value, ast.Name) and func.value.id == "importlib"):
+                    is_import_module = True
+                # import_module("...") — if imported directly
+                if isinstance(func, ast.Name) and func.id == "import_module":
+                    is_import_module = True
+                if not is_import_module:
+                    continue
+                if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
+                    mod_str = node.args[0].value
+                    t = _module_to_file(mod_str)
+                    if t:
+                        targets.add(t)
+            return targets
+
+        # Module-level: recurse into try/if/with but not def/class
+        ml_targets, tc_targets = _collect_module_level_imports(tree.body, src_file_name)
 
         # All imports (module-level + function-level) via ast.walk
-        all_targets = _resolve_import_targets(ast.walk(tree))
+        all_targets = _collect_imports_from_stmts(ast.walk(tree), src_file_name)
 
-        # Function-level only = present in walk but not in tree.body
-        fl_only_targets = all_targets - ml_targets
+        # Function-level only = present in walk but not in tree.body AND not TYPE_CHECKING
+        fl_only_targets = all_targets - ml_targets - tc_targets
+
+        # importlib.import_module("literal") → Import edges
+        importlib_targets = _collect_importlib_literals(tree, src_file_name)
+        # Add to ml_targets (they are genuine runtime deps)
+        ml_targets |= importlib_targets
 
         # Insert NEW module-level imports as 'Import'
         for tgt_file_name in sorted(ml_targets):
@@ -549,6 +632,22 @@ def enhance_python_dependencies(
             import_lazy_added += 1
             step0_changed = True
 
+        # Insert NEW TYPE_CHECKING-guarded imports as 'ImportType'
+        for tgt_file_name in sorted(tc_targets):
+            tgt_file_id = file_id_by_name.get(tgt_file_name)
+            if not tgt_file_id:
+                continue
+            key = (src_file_id, tgt_file_id)
+            if key in existing_imports:
+                continue
+            cursor.execute(
+                "INSERT INTO deps (src, tgt, kind, row, commit_id) VALUES (?, ?, 'ImportType', 0, NULL)",
+                (src_file_id, tgt_file_id),
+            )
+            existing_imports.add(key)
+            import_type_added += 1
+            step0_changed = True
+
         # Reclassify EXISTING stackgraphs Import edges for function-level-only targets.
         # StackGraphs treats all imports identically; this corrects the scope.
         if is_stackgraphs and fl_only_targets:
@@ -564,6 +663,20 @@ def enhance_python_dependencies(
                 if cursor.rowcount > 0:
                     reclass_count += cursor.rowcount
 
+        # Reclassify EXISTING stackgraphs Import edges for TYPE_CHECKING targets.
+        if is_stackgraphs and tc_targets:
+            for tgt_file_name in tc_targets:
+                tgt_file_id = file_id_by_name.get(tgt_file_name)
+                if not tgt_file_id:
+                    continue
+                cursor.execute(
+                    "UPDATE deps SET kind = 'ImportType' "
+                    "WHERE src = ? AND tgt = ? AND kind = 'Import'",
+                    (src_file_id, tgt_file_id),
+                )
+                if cursor.rowcount > 0:
+                    reclass_type_count += cursor.rowcount
+
     # StackGraphs(+AST) tends to create an additional package-level Import edge:
     #   some_module.py -> pkg/__init__.py
     # when resolving `from pkg.sub import X` or similar references.
@@ -577,7 +690,7 @@ def enhance_python_dependencies(
         cursor.execute(
             """
             DELETE FROM deps
-            WHERE kind IN ('Import', 'ImportLazy')
+            WHERE kind IN ('Import', 'ImportLazy', 'ImportType')
               AND src IN (SELECT id FROM entities WHERE kind = 'File')
               AND tgt IN (
                 SELECT id FROM entities
@@ -617,13 +730,17 @@ def enhance_python_dependencies(
         if removed_module_field_uses:
             step0_changed = True
 
-    if step0_changed or reclass_count:
+    if step0_changed or reclass_count or reclass_type_count:
         conn.commit()
     print(f"Import deps added: {import_added}")
     if import_lazy_added:
         print(f"ImportLazy deps added: {import_lazy_added}")
+    if import_type_added:
+        print(f"ImportType deps added: {import_type_added}")
     if reclass_count:
         print(f"Import edges reclassified as ImportLazy (edge-schema v2): {reclass_count}")
+    if reclass_type_count:
+        print(f"Import edges reclassified as ImportType (TYPE_CHECKING): {reclass_type_count}")
 
     new_deps_count = 0
     field_field_deps_added = 0
