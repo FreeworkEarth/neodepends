@@ -490,7 +490,7 @@ def enhance_python_dependencies(
         #   at import time, not deferred).
         # Function-level imports = inside def/class bodies (deferred; no import-order risk).
         # TYPE_CHECKING imports = inside `if TYPE_CHECKING:` guards (design-time only,
-        #   zero runtime coupling) → classified as ImportType.
+        #   zero runtime coupling) --> classified as ImportType.
         # See CC_WEAKNESSES_archagent.md §1.
 
         def _is_type_checking_guard(node: ast.If) -> bool:
@@ -534,7 +534,7 @@ def enhance_python_dependencies(
                     imports |= _collect_imports_from_stmts([stmt], src_file)
                 elif isinstance(stmt, ast.If):
                     if _is_type_checking_guard(stmt):
-                        # TYPE_CHECKING guard → ImportType, not Import
+                        # TYPE_CHECKING guard --> ImportType, not Import
                         type_only |= _collect_imports_from_stmts(stmt.body, src_file)
                     else:
                         sub_imp, sub_tc = _collect_module_level_imports(stmt.body, src_file)
@@ -559,11 +559,11 @@ def enhance_python_dependencies(
                     sub_imp, sub_tc = _collect_module_level_imports(stmt.body, src_file)
                     imports |= sub_imp
                     type_only |= sub_tc
-                # ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef → skip (not module-level)
+                # ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef --> skip (not module-level)
             return imports, type_only
 
         def _collect_importlib_literals(tree_node: ast.AST, src_file: str) -> Set[str]:
-            """Detect importlib.import_module("constant.string") calls → Import edges."""
+            """Detect importlib.import_module("constant.string") calls --> Import edges."""
             targets: Set[str] = set()
             for node in ast.walk(tree_node):
                 if not isinstance(node, ast.Call):
@@ -595,7 +595,7 @@ def enhance_python_dependencies(
         # Function-level only = present in walk but not in tree.body AND not TYPE_CHECKING
         fl_only_targets = all_targets - ml_targets - tc_targets
 
-        # importlib.import_module("literal") → Import edges
+        # importlib.import_module("literal") --> Import edges
         importlib_targets = _collect_importlib_literals(tree, src_file_name)
         # Add to ml_targets (they are genuine runtime deps)
         ml_targets |= importlib_targets
