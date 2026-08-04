@@ -12,6 +12,7 @@ from tts.route_repository import RouteRepository
 from tts.passenger_repository import PassengerRepository
 from tts.ticket_repository import TicketRepository
 from tts.booking_service import BookingService
+from tts.protocols import Displayable
 from tts.ticket_agent import TicketAgent
 from tts.station_manager import StationManager
 from tts.reporting_service import AdvancedReportingService
@@ -108,6 +109,24 @@ def main():
     agent1.display_info()
     print()
     manager1.display_info()
+
+    # Polymorphic example (isinstance + subclass-only method)
+    staff_member = agent1
+    if isinstance(staff_member, TicketAgent):
+        staff_member.get_assigned_station_id()
+
+    # B2 fixture: protocol / structural typing — isinstance check uses the
+    # Protocol, but the structural relationship (TicketAgent has display_info)
+    # is invisible to static analysis.
+    if isinstance(agent1, Displayable):
+        print("Agent is Displayable (structural match)")
+
+    # R5 fixture: PEP 562 __getattr__ re-export — this import goes through
+    # tts/__init__.py's __getattr__, which lazily loads from tts.booking_service.
+    # Static analysis sees only "from tts import BookingService" → edge to
+    # tts/__init__.py.  The REAL dependency on tts/booking_service.py is invisible.
+    from tts import BookingService as _BS
+    assert _BS is BookingService  # same class, different import path
 
     print("\n=== Demo Complete ===")
 

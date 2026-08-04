@@ -1143,5 +1143,65 @@
     "tts/train_station_repository.py/CLASSES/TrainStationRepository/METHODS/get_station (Method)",
     "tts/train_station_repository.py/CLASSES/TrainStationRepository/FIELDS/stations (Field)",
     "Use"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/__init__.py/module (Module)",
+    "ImportLazy"
+  ],
+  [
+    "main.py/module (Module)",
+    "tts/protocols.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/__init__.py/module (Module)",
+    "tts/booking_service.py/module (Module)",
+    "ImportLazy"
+  ],
+  [
+    "tts/booking_service.py/module (Module)",
+    "tts/reporting_service.py/module (Module)",
+    "ImportLazy"
+  ],
+  [
+    "tts/booking_service.py/module (Module)",
+    "tts/providers/protocol.py/module (Module)",
+    "ImportLazy"
+  ],
+  [
+    "tts/providers/__init__.py/module (Module)",
+    "tts/providers/protocol.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/reporting_service.py/module (Module)",
+    "tts/json.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/reporting_service.py/module (Module)",
+    "tts/logging.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/reporting_service.py/module (Module)",
+    "tts/route.py/module (Module)",
+    "ImportLazy"
+  ],
+  [
+    "tts/ticket_repository.py/module (Module)",
+    "tts/route.py/module (Module)",
+    "ImportType"
+  ],
+  [
+    "tts/station_manager.py/module (Module)",
+    "tts/train_station_repository.py/module (Module)",
+    "Import"
+  ],
+  [
+    "tts/train_repository.py/module (Module)",
+    "tts/route.py/module (Module)",
+    "Import"
   ]
 ]

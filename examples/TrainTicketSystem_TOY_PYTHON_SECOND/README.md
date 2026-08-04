@@ -237,4 +237,36 @@ deicide-tool \
 3. Compare cross-language: Python vs Java (FIRST and SECOND)
 4. Document any Python-specific Deicide configuration
 
-**Status:** ✅ Complete and Ready for Analysis
+**Status:** Complete and Ready for Analysis
+
+---
+
+## Canonical Source Declaration
+
+This directory (`examples/TrainTicketSystem_TOY_PYTHON_SECOND/`) is the
+**canonical source of truth** for the SECOND toy project.  Any external
+copies (e.g. `TEST_AUTO/000_TOY_EXAMPLES/`) are working mirrors and must
+be synced FROM here, not the reverse.
+
+**Release checklist item:** verify toy sync before tagging (prevents
+silent drift between the public repo and working copies).
+
+### Failure-mode fixtures (v0.3.7 -- v0.3.9)
+
+| ID | File | Pattern | Expected edge kind |
+|----|------|---------|-------------------|
+| R1 | booking_service.py | Lazy function-level import | ImportLazy |
+| R2 | ticket_repository.py | TYPE_CHECKING guard | ImportType |
+| R3 | station_manager.py | importlib.import_module() | Import |
+| R4 | train_repository.py | Module-level try/except import | Import |
+| R5 | __init__.py | PEP 562 __getattr__ re-export | ImportLazy |
+| R10 | reporting_service.py | Dual-scope TYPE_CHECKING + lazy | ImportLazy |
+| B2 | protocols.py | Protocol / structural typing | (no import edge) |
+| B3 | reporting_service.py | Forward-ref string annotation | (no import edge) |
+| B5 | json.py, logging.py | Stdlib shadow | Import (qualified only) |
+
+### Handcount benchmark (v0.3.9)
+
+- 241 entity-level edges (45 file-level import edges)
+- 100% P / 100% R / 100% F1 on 44 non-init import edges
+- 3 init-artifacts excluded from precision (framework noise)

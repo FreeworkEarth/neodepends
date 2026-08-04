@@ -8,13 +8,22 @@ Keeps the "SECOND" architecture style (repositories + IDs) but adds:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
+from tts.json import to_json
+from tts.logging import setup_logging
 from tts.passenger_repository import PassengerRepository
 from tts.route_repository import RouteRepository
 from tts.ticket_repository import TicketRepository
 from tts.train_repository import TrainRepository
 from tts.train_station_repository import TrainStationRepository
+
+if TYPE_CHECKING:
+    # R10 fixture (dual-scope, design-time half): this TYPE_CHECKING import of
+    # tts.route exists ONLY for annotation resolution.  The SAME module is also
+    # imported at runtime inside format_route_detail() below.  Correct label:
+    # ImportLazy (runtime wins) — NOT ImportType-only.
+    from tts.route import Route
 
 
 class ReportingService:
@@ -34,6 +43,7 @@ class ReportingService:
         self.passenger_repo = passenger_repo
         self.station_repo = station_repo
 
+        self._logger = setup_logging("reporting")
         self.reports: List[Tuple[str, Any]] = []
         self.metrics: Dict[str, Any] = {}
         self.cached_stats: Optional[Dict[str, Any]] = None
@@ -146,6 +156,53 @@ class ReportingService:
             "metrics": self.metrics,
             "summary": self.generate_summary(),
         }
+
+    def export_json(self) -> str:
+        """Export all reports as JSON string (exercises B5 shadow fixture)."""
+        return to_json(self.export_all_reports(), pretty=True)
+
+    def format_route_detail(self, route_id: str) -> Optional["Route"]:
+        """Format route details for display.
+
+        Failure-mode fixture R7 (dual-scope import): tts.route is imported
+        BOTH under ``if TYPE_CHECKING:`` at module level (line 21, design-time)
+        AND inside this function body (runtime lazy import).
+
+        Expected classification: ImportLazy for the file-level edge
+        (runtime supersedes design-time).  Contrast with R2 in
+        ticket_repository.py, which is a PURE TYPE_CHECKING target and
+        correctly gets ImportType-only.
+
+        Bug scenario (pre-fix): target-set subtraction
+        ``fl_only_targets = all_targets - ml_targets - tc_targets`` removes
+        route.py from function-level targets because it appears in tc_targets.
+        The entity-level reclassifier then sweeps ALL Import edges to
+        ImportType, losing the runtime dependency.
+        """
+        from tts.route import Route
+
+        route = self.route_repo.get_route(route_id)
+        if not isinstance(route, Route):
+            return None
+        return {
+            "id": route.route_id,
+            "origin": route.origin_station_id,
+            "destination": route.destination_station_id,
+            "distance": route.distance,
+            "fare": route.base_fare,
+        }
+
+    def format_ticket(self, ticket: "Ticket") -> str:
+        """Format a ticket for display.
+
+        Failure-mode fixture B3 (forward-ref string annotation): the type hint
+        ``"Ticket"`` is a string, not a direct name reference.  With
+        ``from __future__ import annotations`` active (line 9), ALL annotations
+        are strings — but this one references a class from another module
+        (tts.ticket.Ticket) that is NOT imported at the top of this file.
+        NeoDepends may or may not resolve this to an edge.
+        """
+        return f"{ticket.ticket_id}: {ticket.status} (${ticket.fare})"
 
 
 class AdvancedReportingService(ReportingService):

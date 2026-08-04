@@ -5,6 +5,15 @@ Manages Train entities separately
 from typing import Dict, List, Optional
 from tts.train import Train
 
+# Failure-mode fixture R4 (conditional import): both branches create a real
+# runtime dependency, but static analysis may capture only one or neither.
+# NeoDepends should capture the import to tts.route regardless of which
+# branch executes.
+try:
+    from tts.route import Route as _Route
+except ImportError:
+    _Route = None  # type: ignore[assignment,misc]
+
 
 class TrainRepository:
     """Repository for Train entities"""
