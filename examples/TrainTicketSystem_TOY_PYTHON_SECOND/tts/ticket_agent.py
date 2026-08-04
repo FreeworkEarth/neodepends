@@ -17,3 +17,6 @@ class TicketAgent(Staff):
         print(f"Ticket Agent: {self.name} (ID: {self.employee_id})")
         print(f"Assigned Station: {self.assigned_station_id}")
         print(f"Salary: ${self.salary}")
+
+    def get_assigned_station_id(self) -> str:
+        return self.assigned_station_id

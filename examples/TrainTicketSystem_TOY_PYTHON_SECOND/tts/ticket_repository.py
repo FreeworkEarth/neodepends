@@ -2,8 +2,17 @@
 NEW CLASS: Repository pattern
 Manages Ticket entities separately
 """
-from typing import Dict, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict, List, Optional
+
 from tts.ticket import Ticket
+
+if TYPE_CHECKING:
+    # Failure-mode fixture R2 (TYPE_CHECKING guard): this import is erased at
+    # runtime — it exists only for type checkers (mypy/pyright).  NeoDepends
+    # should NOT create a runtime Import edge to route.py from this file.
+    from tts.route import Route
 
 
 class TicketRepository:
