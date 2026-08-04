@@ -1,0 +1,57 @@
+{
+  "_comment": [
+    "Hand-written pre-extraction (A3), updated after B2.2 reproduce run.",
+    "File-level edges after enhance + export.",
+    "Anchor set: Import, ImportLazy, Extend with transitive closure (A1).",
+    "UseTransitive = Use/Call edge whose src-file has no import anchor to tgt-file."
+  ],
+
+  "mode_preserving_policy": {
+    "import_scoped_default": "UseTransitive DROPPED (v0.3.9 behavior). --include-transitive-use opts in.",
+    "non_scoped_default": "UseTransitive EXPORTED as UseTransitive (v0.3.9 behavior). --exclude-transitive-use opts out.",
+    "grep_confirm": "UseTransitive is NON-QUOTABLE BY DESIGN — no import line exists from src to tgt. Consumers (e.g. ARCH_AGENT grep-confirm) must treat UseTransitive as expected-unquotable, not a failure."
+  },
+
+  "anchored_import_edges": [
+    ["shim/__init__.py",      "defs.py",          "Import"],
+    ["shim/enums.py",         "defs.py",          "Import"],
+    ["consumer_reexport2.py", "shim/enums.py",    "Import"],
+    ["factory.py",            "base.py",          "Import"],
+    ["consumer_di.py",        "factory.py",       "Import"]
+  ],
+
+  "use_transitive_edges": [
+    {
+      "src": "consumer_reexport.py", "tgt": "defs.py",
+      "original_kind": "Use", "relabeled_kind": "UseTransitive", "count": 4,
+      "mechanism": "re-export via __init__.py — import shim; shim.Color.RED resolves Color/RED to defs.py"
+    },
+    {
+      "src": "consumer_reexport2.py", "tgt": "defs.py",
+      "original_kind": "Use", "relabeled_kind": "UseTransitive", "count": 4,
+      "mechanism": "re-export via named module — import shim.enums; shim.enums.Color.GREEN resolves to defs.py"
+    },
+    {
+      "src": "consumer_di.py", "tgt": "base.py",
+      "original_kind": "Call", "relabeled_kind": "UseTransitive", "count": 1,
+      "mechanism": "DI injection — svc.process() resolves to Service.process in base.py, no import to base"
+    },
+    {
+      "src": "consumer_reexport.py", "tgt": "shim/__init__.py",
+      "original_kind": "Use", "relabeled_kind": "UseTransitive", "count": 2,
+      "mechanism": "module ref — import shim creates module binding without Import edge (StackGraphs behavior)"
+    }
+  ],
+
+  "_note": [
+    "StackGraphs with 'import X' (not 'from X import Y') does NOT create Import to the",
+    "re-exporting module in some cases. The attribute access (shim.Color) creates Use edges",
+    "that resolve through the re-export chain to the definition site (defs.py).",
+    "For 'from shim.enums import Color' style, StackGraphs resolves Import directly to defs.py,",
+    "anchoring the file pair. The 'import X; X.attr' style leaves them unanchored.",
+    "",
+    "The inheritance variant also produces UseTransitive: subclass-mediated access",
+    "(e.g. main imports Passenger which extends Person; main.py -> person.py is UseTransitive).",
+    "This is demonstrated by the SECOND toy baseline (18 relabels, see second_toy_ut_baseline.json)."
+  ]
+}

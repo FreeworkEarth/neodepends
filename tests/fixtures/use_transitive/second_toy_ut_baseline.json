@@ -1,0 +1,31 @@
+{
+  "_comment": [
+    "Pinned UseTransitive relabel baseline for SECOND toy.",
+    "Regression gate: SECOND relabel set must EQUAL this baseline exactly.",
+    "Any addition or disappearance is a STOP.",
+    "All edges: main.py accessing definition-site entities through inheritance",
+    "(subclass-mediated coupling, no direct import from main.py to these files)."
+  ],
+
+  "relabel_summary": {
+    "Use_to_UseTransitive": 13,
+    "Call_to_UseTransitive": 5,
+    "total": 18,
+    "db_edge_total_preserved": true
+  },
+
+  "file_pairs": [
+    {
+      "src": "main.py", "tgt": "tts/person.py", "count": 4,
+      "mechanism": "Person.display_info accessed via subclass Passenger (main imports Passenger, not Person)"
+    },
+    {
+      "src": "main.py", "tgt": "tts/staff.py", "count": 3,
+      "mechanism": "Staff class accessed via subclasses TicketAgent and StationManager"
+    },
+    {
+      "src": "main.py", "tgt": "tts/ticket.py", "count": 11,
+      "mechanism": "Ticket class/fields/methods accessed transitively (BookingService creates Tickets)"
+    }
+  ]
+}

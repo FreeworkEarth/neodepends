@@ -1,6 +1,6 @@
 # Python Dependency Extraction — Failure-Mode Catalog
 
-> **NeoDepends v0.3.9** — static analysis boundary conditions for Python.
+> **NeoDepends v0.3.10** — static analysis boundary conditions for Python.
 > Each mechanism is classified as a **precision hazard** (phantom edges),
 > **recall hazard** (missed edges), or **both**.
 
@@ -66,28 +66,60 @@ Python builtins / container protocols (`get`, `set`, `delete`, `update`, `keys`,
 
 ---
 
-### P3. Shared-external-symbol Use edges
+### P3. Definition-site attribution (UseTransitive)
 
-**Class:** Precision hazard
-**Status:** Residual (mitigated by P2 fix, not fully eliminated)
+**Class:** Mixed — precision hazard (phantom subset) + recall gap (real subset)
+**Status:** LABELED in v0.3.10
 
-When two files both reference a symbol from a third-party or stdlib package (e.g.
-`session.query(...)`, `db.Column(...)`), StackGraphs may resolve both references to
-the same internal entity if name-binding finds a matching class/method in the
-project. This creates phantom Use/Call edges between files that share no genuine
-coupling.
+StackGraphs resolves Use/Call edges to definition sites even when the source file
+has no import to the target file. Some of these edges are phantom (shared-external-
+symbol resolution, see P2), but others represent real coupling attributed through
+re-export chains, DI injection, or inheritance-mediated access. v0.3.10 relabels
+the real subset as `UseTransitive` so they can be distinguished and opted in/out
+per export mode.
 
-**Mechanism:** StackGraphs resolves names by walking scope chains. If `Session` or
-`Column` exist as class names inside the project (e.g. re-exported from SQLAlchemy
-via `core/db.py`), every file using `session.query()` gets a Use edge to `core/db.py`
-even if the file doesn't import from `core/db.py`.
+**Three mechanisms that produce UseTransitive edges:**
 
-**Impact observed:** `core/db.py` had 46 inbound USE-ONLY edges; roughly half were
-borderline/phantom (Session type resolution). `booking_enums.py` attracted phantom
-Use edges from files importing identically-named enums.
+1. **Re-export chains** — `import shim; shim.Color.RED` where `shim/__init__.py`
+   re-exports `Color` from `defs.py`. StackGraphs resolves the attribute access
+   through the re-export chain to `defs.py`, creating Use edges from the consumer
+   to `defs.py` without any Import edge between them.
 
-**Potential fix:** Import-visibility gating — never attribute a cross-file Call/Use
-edge into a file the source doesn't import (directly or transitively via re-exports).
+2. **DI injection** — `from factory import create_service; svc = create_service();
+   svc.process()` where `process()` is defined in `base.py`. The consumer imports
+   the factory, not the definition site. StackGraphs resolves `.process()` to
+   `base.py` via return-type inference, creating a Use edge with no Import anchor.
+
+3. **Inheritance-mediated access** — `main.py` accesses an entity attribute (e.g.
+   `ticket.name`) where `ticket` is a subclass instance. StackGraphs resolves the
+   attribute to the parent class definition site. If `main.py` imports only the
+   subclass, the parent file has no Import anchor — the edge is relabeled
+   UseTransitive. This is real coupling that was previously silently dropped in
+   import-scoped mode (a recall gap the label now makes visible and optable-in).
+
+**StackGraphs mechanism note:** `import X; X.attr` does NOT create an Import edge
+to `X`'s module-level file. The `import X` statement binds the module object, but
+attribute access (`X.attr`) is resolved via scope-chain walking and creates Use
+edges to the definition site. In contrast, `from X import attr` resolves the Import
+binding directly to the definition site (creating an Import edge). This distinction
+is the root cause of re-export UseTransitive edges. Evidence: `tests/fixtures/
+use_transitive/consumer_reexport.py` vs a `from shim import Color` variant.
+
+**UseTransitive label policy (mode-preserving defaults):**
+
+- **Import-scoped mode** (default): UseTransitive edges are **dropped** by default
+  (v0.3.9 behavior preserved). `--include-transitive-use` opts them in.
+- **Non-scoped mode** (`--no-import-scoped`): UseTransitive edges are **kept** by
+  default (v0.3.9 behavior preserved). `--exclude-transitive-use` opts them out.
+- Edge count is preserved by the relabel (no edges added or removed in the DB).
+
+**Anchor set:** `{Import, ImportLazy, Extend}` with transitive closure on Extend
+chains. Matches the import-scoped gate in `neodepends_python_export.py` (continuity
+by construction, amendment A1).
+
+**Impact observed:** SECOND toy example (train-ticket Python): 18 UseTransitive
+relabels — `main.py→person.py` (4), `main.py→staff.py` (3), `main.py→ticket.py`
+(11). All are inheritance-mediated attribute access through subclass instances.
 
 ---
 

@@ -803,6 +803,8 @@ def export_dv8_file_level(
     collapse_weights: bool = False,
     exclude_lazy_imports: bool = False,
     import_scoped: bool = True,
+    include_transitive_use: bool = False,
+    exclude_transitive_use: bool = False,
 ) -> None:
     """
     Export a single DV8 dependency matrix at FILE level.
@@ -912,11 +914,27 @@ def export_dv8_file_level(
         if dep_kind == "ImportType":
             continue
 
-        # --- Import-scoped resolution (pass 2): drop non-import edges whose
-        # file pair has no import relationship.  These are phantom edges caused
-        # by StackGraphs resolving names to definition sites rather than import
-        # sites (e.g. enum used via re-export, inherited field, polymorphic call).
-        if import_scoped and dep_kind not in _IMPORT_KINDS:
+        # UseTransitive = definition-site-attributed coupling (re-export chains,
+        # DI injection, inheritance-mediated access).  Labeled in enhance step;
+        # export behavior is mode-preserving:
+        #   import-scoped (default): dropped by default (v0.3.9 behavior);
+        #     --include-transitive-use opts in.
+        #   non-scoped: exported by default (v0.3.9 behavior);
+        #     --exclude-transitive-use opts out.
+        if dep_kind == "UseTransitive":
+            if exclude_transitive_use:
+                import_scoped_dropped += 1
+                continue
+            if import_scoped and not include_transitive_use:
+                import_scoped_dropped += 1
+                continue
+            # Survived: edge is explicitly kept.  elif below skips the
+            # regular gate so UseTransitive proceeds to output.
+        elif import_scoped and dep_kind not in _IMPORT_KINDS:
+            # --- Import-scoped resolution (pass 2): drop non-import edges
+            # whose file pair has no import relationship.  UseTransitive
+            # edges are handled above; remaining anchor-less non-import
+            # edges are unlabeled stragglers (safety net).
             if (src_file_id, tgt_file_id) not in import_file_pairs:
                 import_scoped_dropped += 1
                 continue
@@ -2740,6 +2758,22 @@ def main() -> int:
              "definition site rather than import site.",
     )
     parser.add_argument(
+        "--include-transitive-use",
+        action="store_true",
+        default=False,
+        help="In import-scoped mode (default), include UseTransitive edges that "
+             "would otherwise be dropped. UseTransitive = definition-site-attributed "
+             "coupling via re-export chains, DI injection, or inheritance-mediated "
+             "access. Off by default to preserve v0.3.9 metric continuity.",
+    )
+    parser.add_argument(
+        "--exclude-transitive-use",
+        action="store_true",
+        default=False,
+        help="In non-scoped mode (--no-import-scoped), exclude UseTransitive edges. "
+             "Off by default: non-scoped mode exports all edges including UseTransitive.",
+    )
+    parser.add_argument(
         "--config",
         choices=["automatic", "default", "python", "java", "manual"],
         default="manual",
@@ -3348,6 +3382,8 @@ def main() -> int:
                     collapse_weights=collapse_weights,
                     exclude_lazy_imports=bool(args.exclude_lazy_imports),
                     import_scoped=not bool(args.no_import_scoped),
+                    include_transitive_use=bool(args.include_transitive_use),
+                    exclude_transitive_use=bool(args.exclude_transitive_use),
                 )
             if full_dv8:
                 export_dv8_full_project(
