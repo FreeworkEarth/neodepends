@@ -1,0 +1,63 @@
+{
+  "name": "root",
+  "children": [
+    {
+      "name": "entry",
+      "children": [
+        {"name": "main.py"}
+      ]
+    },
+    {
+      "name": "tts-core",
+      "children": [
+        {
+          "name": "services",
+          "children": [
+            {"name": "tts/booking_service.py"},
+            {"name": "tts/reporting_service.py"},
+            {"name": "tts/station_manager.py"},
+            {"name": "tts/ticket_agent.py"}
+          ]
+        },
+        {
+          "name": "domain-models",
+          "children": [
+            {"name": "tts/person.py"},
+            {"name": "tts/passenger.py"},
+            {"name": "tts/staff.py"},
+            {"name": "tts/ticket.py"},
+            {"name": "tts/route.py"},
+            {"name": "tts/train.py"},
+            {"name": "tts/train_station.py"}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tts-repos",
+      "children": [
+        {"name": "tts/passenger_repository.py"},
+        {"name": "tts/route_repository.py"},
+        {"name": "tts/ticket_repository.py"},
+        {"name": "tts/train_repository.py"},
+        {"name": "tts/train_station_repository.py"}
+      ]
+    },
+    {
+      "name": "tts-infra",
+      "children": [
+        {"name": "tts/__init__.py"},
+        {"name": "tts/protocols.py"},
+        {"name": "tts/json.py"},
+        {"name": "tts/logging.py"}
+      ]
+    },
+    {
+      "name": "tts-providers",
+      "children": [
+        {"name": "tts/providers/__init__.py"},
+        {"name": "tts/providers/protocol.py"}
+      ]
+    }
+  ]
+}
