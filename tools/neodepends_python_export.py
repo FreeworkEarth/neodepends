@@ -2753,6 +2753,13 @@ def main() -> int:
             "Explicit flags override preset values."
         ),
     )
+    parser.add_argument("--viz", dest="viz", action="store_true", default=True,
+                        help="Generate self-contained HTML visualizations (DSM + graph) (default: on)")
+    parser.add_argument("--no-viz", dest="viz", action="store_false",
+                        help="Skip HTML visualization generation")
+    parser.add_argument("--viz-level", choices=["file", "entity", "both"],
+                        default="file",
+                        help="Visualization level: file (default), entity, or both")
 
     args = parser.parse_args()
 
@@ -3477,6 +3484,64 @@ def main() -> int:
                 sys.stdout.write(f"  Dev log:      {terminal_path}\n")
             sys.stdout.write("\n")
             sys.stdout.flush()
+
+            # --- Visualization (--viz / --no-viz, --viz-level) ---
+            viz_level = getattr(args, "viz_level", "file")
+            if getattr(args, "viz", False):
+                try:
+                    viz_script = Path(__file__).resolve().parent / "make_visualizations.py"
+                    if viz_script.exists():
+                        import importlib.util as _ilu
+                        _spec = _ilu.spec_from_file_location("make_visualizations", str(viz_script))
+                        _viz_mod = _ilu.module_from_spec(_spec)
+                        _spec.loader.exec_module(_viz_mod)
+                        viz_title = Path(str(focus_path)).name
+                        viz_outputs = []
+
+                        # File-level viz
+                        if viz_level in ("file", "both"):
+                            _viz_file = None
+                            if file_level_dv8 and file_level_out_path.exists():
+                                _viz_file = file_level_out_path
+                            elif full_dv8 and full_dep_out_path.exists():
+                                _viz_file = full_dep_out_path
+                            if _viz_file:
+                                viz_vars, viz_cells = _viz_mod.load_dep_json(_viz_file)
+                                dsm_out = out_dir / "dsm_view.html"
+                                graph_out = out_dir / "graph_view.html"
+                                _viz_mod.generate_dsm_html(viz_vars, viz_cells, dsm_out,
+                                                           title=f"DSM: {viz_title}")
+                                _viz_mod.generate_graph_html(viz_vars, viz_cells, graph_out,
+                                                             title=f"Graph: {viz_title}")
+                                viz_outputs.extend([dsm_out, graph_out])
+
+                        # Entity-level viz
+                        if viz_level in ("entity", "both"):
+                            _viz_ent = None
+                            if full_dv8 and full_dep_out_path.exists():
+                                _viz_ent = full_dep_out_path
+                            if _viz_ent:
+                                viz_vars, viz_cells = _viz_mod.load_dep_json(_viz_ent)
+                                suffix = "_entity" if viz_level == "both" else ""
+                                dsm_out = out_dir / f"dsm_view{suffix}.html"
+                                graph_out = out_dir / f"graph_view{suffix}.html"
+                                _viz_mod.generate_dsm_html(viz_vars, viz_cells, dsm_out,
+                                                           title=f"DSM (entity): {viz_title}",
+                                                           is_entity_level=True)
+                                _viz_mod.generate_graph_html(viz_vars, viz_cells, graph_out,
+                                                             title=f"Graph (entity): {viz_title}",
+                                                             is_entity_level=True)
+                                viz_outputs.extend([dsm_out, graph_out])
+
+                        if viz_outputs:
+                            sys.stdout.write(f"  Visualizations: {viz_outputs[0]}\n")
+                            for vp in viz_outputs[1:]:
+                                sys.stdout.write(f"                  {vp}\n")
+                            sys.stdout.write("\n")
+                            sys.stdout.flush()
+                except Exception as viz_err:
+                    sys.stderr.write(f"[WARN] Visualization generation failed (non-fatal): {viz_err}\n")
+                    sys.stderr.flush()
 
             return summary
         finally:
