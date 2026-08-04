@@ -817,6 +817,111 @@ def enhance_python_dependencies(
     if reclass_type_count:
         print(f"Import edges reclassified as ImportType (TYPE_CHECKING): {reclass_type_count}")
 
+    # --- STEP 0c: UseTransitive relabel ---
+    # For each Use/Call edge whose (src_file, tgt_file) has no import anchor,
+    # relabel as UseTransitive.  These are real coupling edges attributed to a
+    # definition site via re-export chains or DI injection — the source file
+    # has no import line to the target file.  Edge count is preserved (relabel
+    # only, no edges added or removed).
+    #
+    # Anchor set: {Import, ImportLazy, Extend} with transitive closure on
+    # Extend chains — matching the import-scoped gate in
+    # neodepends_python_export.py (A1: continuity by construction).
+    _UT_ANCHOR_KINDS = {"Import", "ImportLazy", "Extend"}
+    _UT_RELABEL_KINDS = {"Use", "Call"}
+
+    # Build entity -> owning File mapping
+    _ut_ent_parent: Dict[bytes, Optional[bytes]] = {}
+    _ut_ent_kind: Dict[bytes, str] = {}
+    for _eid, _pid, _ek in cursor.execute("SELECT id, parent_id, kind FROM entities").fetchall():
+        _ut_ent_parent[_eid] = _pid
+        _ut_ent_kind[_eid] = _ek
+
+    _ut_file_memo: Dict[bytes, Optional[bytes]] = {}
+
+    def _ut_file_of(eid: bytes) -> Optional[bytes]:
+        if eid in _ut_file_memo:
+            return _ut_file_memo[eid]
+        seen: Set[bytes] = set()
+        cur_eid = eid
+        while cur_eid and cur_eid not in seen:
+            seen.add(cur_eid)
+            if _ut_ent_kind.get(cur_eid) == "File":
+                _ut_file_memo[eid] = cur_eid
+                return cur_eid
+            cur_eid = _ut_ent_parent.get(cur_eid)
+        _ut_file_memo[eid] = None
+        return None
+
+    # Pass 1: build anchor file pairs from Import/ImportLazy/Extend edges
+    ut_dep_rows = cursor.execute("SELECT rowid, src, tgt, kind FROM deps").fetchall()
+    ut_total_before = len(ut_dep_rows)
+    ut_anchor_pairs: Set[Tuple[bytes, bytes]] = set()
+    ut_extend_pairs: Set[Tuple[bytes, bytes]] = set()
+
+    for _rowid, _src, _tgt, _kind in ut_dep_rows:
+        if _kind not in _UT_ANCHOR_KINDS:
+            continue
+        _sf = _ut_file_of(_src)
+        _tf = _ut_file_of(_tgt)
+        if _sf and _tf and _sf != _tf:
+            ut_anchor_pairs.add((_sf, _tf))
+            if _kind == "Extend":
+                ut_extend_pairs.add((_sf, _tf))
+
+    # Transitive closure on Extend chains only (same logic as export gate):
+    # if A->B (Extend) and B->C (Extend), add A->C as anchor.
+    _ut_changed = True
+    while _ut_changed:
+        _ut_changed = False
+        _ut_new: Set[Tuple[bytes, bytes]] = set()
+        for _a, _b in ut_extend_pairs:
+            for _c, _d in ut_extend_pairs:
+                if _b == _c and (_a, _d) not in ut_anchor_pairs:
+                    _ut_new.add((_a, _d))
+        if _ut_new:
+            ut_anchor_pairs |= _ut_new
+            _ut_changed = True
+
+    # Pass 2: collect rowids of unanchored Use/Call edges for relabeling
+    ut_use_count = 0
+    ut_call_count = 0
+    ut_rowids: List[int] = []
+
+    for _rowid, _src, _tgt, _kind in ut_dep_rows:
+        if _kind not in _UT_RELABEL_KINDS:
+            continue
+        _sf = _ut_file_of(_src)
+        _tf = _ut_file_of(_tgt)
+        if _sf is None or _tf is None or _sf == _tf:
+            continue
+        if (_sf, _tf) not in ut_anchor_pairs:
+            ut_rowids.append(_rowid)
+            if _kind == "Use":
+                ut_use_count += 1
+            else:
+                ut_call_count += 1
+
+    if ut_rowids:
+        cursor.executemany(
+            "UPDATE deps SET kind = 'UseTransitive' WHERE rowid = ?",
+            [(_r,) for _r in ut_rowids],
+        )
+        conn.commit()
+
+    ut_total_after = cursor.execute("SELECT COUNT(*) FROM deps").fetchone()[0]
+
+    print(f"STEP 0c: UseTransitive relabel (anchor set: Import, ImportLazy, Extend)")
+    print(f"  Use -> UseTransitive: {ut_use_count}")
+    print(f"  Call -> UseTransitive: {ut_call_count}")
+    print(f"  DB edge total: {ut_total_before} before == {ut_total_after} after")
+    if ut_total_before != ut_total_after:
+        print(f"  ** ERROR: edge count mismatch! relabel must be count-preserving **")
+
+    # Cleanup temporaries
+    del _ut_ent_parent, _ut_ent_kind, _ut_file_memo, ut_dep_rows
+    del ut_anchor_pairs, ut_extend_pairs, ut_rowids
+
     new_deps_count = 0
     field_field_deps_added = 0
     methods_analyzed = 0
