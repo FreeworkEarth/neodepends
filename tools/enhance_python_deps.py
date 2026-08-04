@@ -432,6 +432,27 @@ def enhance_python_dependencies(
     file_rows = cursor.fetchall()
     file_id_by_name: Dict[str, bytes] = {name: fid for fid, name, _cid in file_rows}
 
+    # Precompute file descendants: for each File entity, collect all entity IDs
+    # that belong to it (File -> Class -> Method/Field/Subclass -> ...).
+    # Used by the entity-level reclassifier (v0.3.9).
+    file_descendants: Dict[bytes, List[bytes]] = {}
+    if is_stackgraphs:
+        _children_of: Dict[bytes, List[bytes]] = {}
+        cursor.execute("SELECT id, parent_id, kind FROM entities")
+        for _eid, _pid, _ekind in cursor.fetchall():
+            if _pid is not None:
+                _children_of.setdefault(_pid, []).append(_eid)
+        for _fid, _fname, _ in file_rows:
+            desc: List[bytes] = [_fid]
+            queue = [_fid]
+            while queue:
+                node = queue.pop()
+                for child in _children_of.get(node, []):
+                    desc.append(child)
+                    queue.append(child)
+            file_descendants[_fid] = desc
+        del _children_of
+
     cursor.execute("SELECT src, tgt FROM deps WHERE kind = 'Import'")
     existing_imports: Set[Tuple[bytes, bytes]] = {(s, t) for s, t in cursor.fetchall()}
 
@@ -466,6 +487,18 @@ def enhance_python_dependencies(
         if module:
             return ".".join(base + module.split("."))
         return ".".join(base)
+
+    def _pkg_prefixes(targets: Set[str]) -> Set[str]:
+        """Return all package directory prefixes for a set of file paths.
+
+        E.g. for ``tts/providers/protocol.py`` returns ``{'tts/', 'tts/providers/'}``.
+        """
+        prefixes: Set[str] = set()
+        for tgt in targets:
+            parts = tgt.split("/")
+            for i in range(1, len(parts)):
+                prefixes.add("/".join(parts[:i]) + "/")
+        return prefixes
 
     import_added = 0
     import_lazy_added = 0
@@ -592,7 +625,19 @@ def enhance_python_dependencies(
         # All imports (module-level + function-level) via ast.walk
         all_targets = _collect_imports_from_stmts(ast.walk(tree), src_file_name)
 
-        # Function-level only = present in walk but not in tree.body AND not TYPE_CHECKING
+        # Function-level only = present in function/method bodies but not at module
+        # level.  Dual-scope targets (both TYPE_CHECKING at module level AND imported
+        # inside a function body) get ImportLazy — runtime dependency supersedes
+        # design-time.  Per-edge classification is the clean long-term solution
+        # (backlog); target-set arithmetic cannot distinguish per-import-statement
+        # scope, so we collect function-body imports separately to detect dual-scope.
+        func_body_nodes: list = []
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                func_body_nodes.extend(ast.walk(node))
+        func_body_targets = _collect_imports_from_stmts(iter(func_body_nodes), src_file_name)
+        dual_scope = tc_targets & func_body_targets
+        tc_targets = tc_targets - dual_scope  # pure TYPE_CHECKING only
         fl_only_targets = all_targets - ml_targets - tc_targets
 
         # importlib.import_module("literal") --> Import edges
@@ -648,34 +693,64 @@ def enhance_python_dependencies(
             import_type_added += 1
             step0_changed = True
 
-        # Reclassify EXISTING stackgraphs Import edges for function-level-only targets.
-        # StackGraphs treats all imports identically; this corrects the scope.
-        if is_stackgraphs and fl_only_targets:
-            for tgt_file_name in fl_only_targets:
-                tgt_file_id = file_id_by_name.get(tgt_file_name)
-                if not tgt_file_id:
-                    continue
-                cursor.execute(
-                    "UPDATE deps SET kind = 'ImportLazy' "
-                    "WHERE src = ? AND tgt = ? AND kind = 'Import'",
-                    (src_file_id, tgt_file_id),
-                )
-                if cursor.rowcount > 0:
-                    reclass_count += cursor.rowcount
+        # Reclassify EXISTING stackgraphs Import edges for function-level-only
+        # and TYPE_CHECKING targets.
+        # v0.3.9: entity-level reclassification + package-init hop propagation.
+        # StackGraphs creates Import edges at entity level (Method->File,
+        # Method->Class) during name resolution.  The reclassifier must update
+        # ALL edges between entities within the source file and entities within
+        # the target file, not just File->File edges.  Additionally, Import
+        # edges to __init__.py files traversed during package resolution are
+        # reclassified when the package path is exclusive to lazy/tc imports.
+        if is_stackgraphs and (fl_only_targets or tc_targets):
+            ml_pfx = _pkg_prefixes(ml_targets)
+            fl_pfx = _pkg_prefixes(fl_only_targets)
+            tc_pfx = _pkg_prefixes(tc_targets)
+            src_ids = file_descendants.get(src_file_id, [src_file_id])
 
-        # Reclassify EXISTING stackgraphs Import edges for TYPE_CHECKING targets.
-        if is_stackgraphs and tc_targets:
-            for tgt_file_name in tc_targets:
-                tgt_file_id = file_id_by_name.get(tgt_file_name)
-                if not tgt_file_id:
-                    continue
-                cursor.execute(
-                    "UPDATE deps SET kind = 'ImportType' "
-                    "WHERE src = ? AND tgt = ? AND kind = 'Import'",
-                    (src_file_id, tgt_file_id),
-                )
-                if cursor.rowcount > 0:
-                    reclass_type_count += cursor.rowcount
+            if fl_only_targets:
+                lazy_init_hops: Set[str] = set()
+                for prefix in fl_pfx - ml_pfx - tc_pfx:
+                    init_path = prefix + "__init__.py"
+                    if init_path in file_id_by_name:
+                        lazy_init_hops.add(init_path)
+                for tgt_file_name in sorted(fl_only_targets | lazy_init_hops):
+                    tgt_file_id = file_id_by_name.get(tgt_file_name)
+                    if not tgt_file_id:
+                        continue
+                    tgt_ids = file_descendants.get(tgt_file_id, [tgt_file_id])
+                    src_ph = ",".join("?" for _ in src_ids)
+                    tgt_ph = ",".join("?" for _ in tgt_ids)
+                    cursor.execute(
+                        f"UPDATE deps SET kind = 'ImportLazy' "
+                        f"WHERE kind = 'Import' "
+                        f"AND src IN ({src_ph}) AND tgt IN ({tgt_ph})",
+                        list(src_ids) + list(tgt_ids),
+                    )
+                    if cursor.rowcount > 0:
+                        reclass_count += cursor.rowcount
+
+            if tc_targets:
+                tc_init_hops: Set[str] = set()
+                for prefix in tc_pfx - ml_pfx - fl_pfx:
+                    init_path = prefix + "__init__.py"
+                    if init_path in file_id_by_name:
+                        tc_init_hops.add(init_path)
+                for tgt_file_name in sorted(tc_targets | tc_init_hops):
+                    tgt_file_id = file_id_by_name.get(tgt_file_name)
+                    if not tgt_file_id:
+                        continue
+                    tgt_ids = file_descendants.get(tgt_file_id, [tgt_file_id])
+                    src_ph = ",".join("?" for _ in src_ids)
+                    tgt_ph = ",".join("?" for _ in tgt_ids)
+                    cursor.execute(
+                        f"UPDATE deps SET kind = 'ImportType' "
+                        f"WHERE kind = 'Import' "
+                        f"AND src IN ({src_ph}) AND tgt IN ({tgt_ph})",
+                        list(src_ids) + list(tgt_ids),
+                    )
+                    if cursor.rowcount > 0:
+                        reclass_type_count += cursor.rowcount
 
     # StackGraphs(+AST) tends to create an additional package-level Import edge:
     #   some_module.py -> pkg/__init__.py
