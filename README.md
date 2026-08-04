@@ -64,3 +64,13 @@ The tool generates dependency graphs in DV8-compatible JSON format, showing rela
 - Classes
 - Methods/Functions
 - Fields/Variables
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for
+the full text.
+
+This is a fork of [jlefever/neodepends](https://github.com/jlefever/neodepends).
+Third-party notices (including the bundled `depends.jar` from
+[multilang-depends/depends](https://github.com/multilang-depends/depends),
+MIT license) are listed in [THIRD-PARTY-NOTICES](THIRD-PARTY-NOTICES).

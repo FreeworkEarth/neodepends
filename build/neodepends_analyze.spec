@@ -26,6 +26,9 @@ a = Analysis(
         (str(tools_dir / 'detect_overrides.py'), 'tools'),
         (str(tools_dir / 'export_dv8_from_neodepends_db.py'), 'tools'),
         (str(tools_dir / 'pipeline_errors.py'), 'tools'),
+        # License files
+        (str(spec_dir.parent / 'LICENSE'), '.'),
+        (str(spec_dir.parent / 'THIRD-PARTY-NOTICES'), '.'),
     ],
     hiddenimports=[
         'neodepends_python_export',  # Explicitly include the export module
