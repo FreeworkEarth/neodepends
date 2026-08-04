@@ -3,4 +3,7 @@ Python tools in `tools/` only use the Python standard library.
 Requirements:
 - Python 3.11+ installed
 
-No `pip install` step is required.
+No `pip install` step is required for core tools.
+
+Optional:
+mypy>=2.3.0  # only for tools/mypy_oracle.py
