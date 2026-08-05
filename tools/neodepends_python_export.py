@@ -2794,6 +2794,10 @@ def main() -> int:
     parser.add_argument("--viz-level", choices=["file", "entity", "both"],
                         default="file",
                         help="Visualization level: file (default), entity, or both")
+    parser.add_argument("--dynamism", dest="dynamism", action="store_true", default=True,
+                        help="Emit dynamism/extraction-confidence report after export (default: on)")
+    parser.add_argument("--no-dynamism", dest="dynamism", action="store_false",
+                        help="Skip dynamism/extraction-confidence report")
 
     args = parser.parse_args()
 
@@ -3577,6 +3581,32 @@ def main() -> int:
                             sys.stdout.flush()
                 except Exception as viz_err:
                     sys.stderr.write(f"[WARN] Visualization generation failed (non-fatal): {viz_err}\n")
+                    sys.stderr.flush()
+
+            # --- Dynamism / extraction-confidence score ---
+            _dyn_dep_path = None
+            if file_level_dv8 and file_level_out_path.exists():
+                _dyn_dep_path = file_level_out_path
+            elif full_dv8 and full_dep_out_path.exists():
+                _dyn_dep_path = full_dep_out_path
+            if getattr(args, "dynamism", True) and _dyn_dep_path:
+                try:
+                    _dyn_script = Path(__file__).resolve().parent / "dynamism_score.py"
+                    if _dyn_script.exists():
+                        import importlib.util as _ilu2
+                        _dyn_spec = _ilu2.spec_from_file_location("dynamism_score", str(_dyn_script))
+                        _dyn_mod = _ilu2.module_from_spec(_dyn_spec)
+                        _dyn_spec.loader.exec_module(_dyn_mod)
+                        _dyn_edges = _dyn_mod.load_edges_from_dv8_dep(_dyn_dep_path)
+                        _dyn_result = _dyn_mod.compute_dynamism_score(_dyn_edges)
+                        _dyn_out = out_dir / "dynamism_report.json"
+                        _dyn_out.write_text(json.dumps(_dyn_result, indent=2), encoding="utf-8")
+                        sys.stdout.write(f"  {_dyn_result['verdict_line']}\n")
+                        sys.stdout.write(f"  CAVEAT: {_dyn_result['caveat']}\n")
+                        sys.stdout.write(f"  Dynamism report: {_dyn_out}\n\n")
+                        sys.stdout.flush()
+                except Exception as dyn_err:
+                    sys.stderr.write(f"[WARN] Dynamism score generation failed (non-fatal): {dyn_err}\n")
                     sys.stderr.flush()
 
             return summary

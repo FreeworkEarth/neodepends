@@ -27,6 +27,7 @@ a = Analysis(
         (str(tools_dir / 'export_dv8_from_neodepends_db.py'), 'tools'),
         (str(tools_dir / 'pipeline_errors.py'), 'tools'),
         (str(tools_dir / 'make_visualizations.py'), 'tools'),
+        (str(tools_dir / 'dynamism_score.py'), 'tools'),
         (str(tools_dir / 'viz_libs' / 'd3.min.js'), 'tools/viz_libs'),
         # License files
         (str(spec_dir.parent / 'LICENSE'), '.'),
