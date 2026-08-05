@@ -595,7 +595,7 @@ zero configuration. Bare `import json` edges are correctly dropped; qualified
 |----|-----------|-------|--------|--------|
 | P1 | Stdlib-shadow imports | Precision | **FIXED v0.3.6** | 67 phantom cells |
 | P2 | Unique-method-owner collision | Precision | **FIXED v0.3.6** | 150 phantom cells |
-| P3 | Shared-external-symbol Use | Precision | Residual | ~23 cells |
+| P3 | Definition-site attribution (UseTransitive) | Attribution | **LABELLED v0.3.10** | ~46 cells |
 | P4 | Re-export / transitive coupling | Precision | Known | ΔM < 0.02% |
 | P5 | Star imports | Precision | Known | Low (project-dependent) |
 | R1 | Lazy / function-level imports | Recall | **HANDLED v0.3.6** | 621 edges reclassified |
@@ -618,6 +618,6 @@ zero configuration. Bare `import json` edges are correctly dropped; qualified
 
 ## Priority for next release
 
-1. **P3 → Import-visibility gating** (subsumes P2 blocklist, kills residual phantoms)
+1. **P3 → UseTransitive label shipped in v0.3.10** (definition-site edges labelled, excluded from import-scoped DSM)
 2. **B2 → Protocol / structural typing detection** (growing adoption in modern Python)
 3. **B3 → Cross-module dotted forward refs** (e.g. `"billing.Invoice"`)
