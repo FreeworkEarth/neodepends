@@ -26,6 +26,8 @@ a = Analysis(
         (str(tools_dir / 'detect_overrides.py'), 'tools'),
         (str(tools_dir / 'export_dv8_from_neodepends_db.py'), 'tools'),
         (str(tools_dir / 'pipeline_errors.py'), 'tools'),
+        (str(tools_dir / 'make_visualizations.py'), 'tools'),
+        (str(tools_dir / 'viz_libs' / 'd3.min.js'), 'tools/viz_libs'),
         # License files
         (str(spec_dir.parent / 'LICENSE'), '.'),
         (str(spec_dir.parent / 'THIRD-PARTY-NOTICES'), '.'),
